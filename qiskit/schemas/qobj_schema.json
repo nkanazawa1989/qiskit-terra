@@ -1045,7 +1045,8 @@
                         },
                         "type": {
                             "enum": [
-                                "QASM"
+                                "QASM",
+                                "PULSE"
                             ]
                         }
                     }
