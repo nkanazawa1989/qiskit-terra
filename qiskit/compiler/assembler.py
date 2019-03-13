@@ -146,11 +146,17 @@ def assemble_schedules(schedules, dict_config, dict_header):
     if isinstance(schedules, PulseSchedule):
         schedules = [schedules]
 
-    qobj_config = PulseQobjConfig(**dict_config)
-    qobj_header = PulseQobjHeader(**dict_header)
     experiments = []
 
     for schedule in schedules:
+
+        # add new pulses in the schedule
+        cmds = schedule.get_sample_pulses()
+        for cmd in cmds:
+            pulse = {'name': cmd.name, 'samples': cmd.samples}
+            if pulse not in dict_config['pulse_library']:
+                dict_config['pulse_library'].append(pulse)
+
         lo_freqs = {
             'qubit_lo_freq': schedule.channels.drive.lo_frequencies(),
             'meas_lo_freq': schedule.channels.measure.lo_frequencies()
@@ -179,7 +185,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 # TODO: support multi-pubit acquisition
                 current_command.qubits = [pulse.channel.index]
                 current_command.memory_slot = [pulse.channel.index]
-                if qobj_config.meas_level == 2:
+                if dict_config['meas_level'] == 2:
                     current_command.register_slot = [pulse.channel.index]
                     _discriminator = pulse.command.discriminator
                     if _discriminator:
@@ -189,7 +195,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                     else:
                         current_command.discriminators = []
                     current_command.discriminators = pulse.command.discriminator.to_dict()
-                if qobj_config.meas_level >= 1:
+                if dict_config['meas_level'] >= 1:
                     _kernel = pulse.command.kernel
                     if _kernel:
                         qobj_kernel = QobjMeasurementOption(name=_kernel.name,
@@ -209,5 +215,15 @@ def assemble_schedules(schedules, dict_config, dict_header):
                                                header=experimentheader,
                                                config=experimentconfig))
 
-        return PulseQobj(qobj_id=str(uuid.uuid4()), config=qobj_config,
-                         experiments=experiments, header=qobj_header)
+    # generate qobj pulse library
+    qobj_pulselib = []
+    for pulse in dict_config['pulse_library']:
+        qobj_pulselib.append(QobjPulseLibrary(name=pulse['name'],
+                                              samples=pulse['samples']))
+    dict_config['pulse_library'] = qobj_pulselib
+
+    qobj_config = PulseQobjConfig(**dict_config)
+    qobj_header = PulseQobjHeader(**dict_header)
+
+    return PulseQobj(qobj_id=str(uuid.uuid4()), config=qobj_config,
+                     experiments=experiments, header=qobj_header)
