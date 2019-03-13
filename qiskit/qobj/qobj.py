@@ -103,3 +103,8 @@ class PulseQobj(BaseModel):
         self.schema_version = QOBJ_VERSION
 
         super().__init__(**kwargs)
+
+
+class Qobj(QASMQobj):
+    """Fake for qiskit provider."""
+    pass

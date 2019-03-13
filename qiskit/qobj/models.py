@@ -422,3 +422,8 @@ class PulseQobjHeader(BaseModel):
     full description of the model, please check ``PulseQobjHeaderSchema``.
     """
     pass
+
+
+class QobjConfig(QASMQobjConfig):
+    """Fake for qiskit provider."""
+    pass
