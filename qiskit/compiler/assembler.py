@@ -12,11 +12,17 @@ import numpy
 import sympy
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
+from qiskit.pulse.schedule import PulseSchedule
+from qiskit.pulse.commands import SamplePulse, FrameChange, PersistentValue, Acquire, Snapshot
 from qiskit.compiler.run_config import RunConfig
-from qiskit.qobj import QASMQobj
+from qiskit.qobj import QASMQobj, PulseQobj
 from qiskit.qobj import QASMQobjConfig, QASMQobjExperiment, QASMQobjInstruction, QASMQobjHeader
 from qiskit.qobj import QASMQobjExperimentConfig, QASMQobjExperimentHeader
-from qiskit.qobj import QobjConditional
+from qiskit.qobj import PulseQobjConfig, PulseQobjExperiment, PulseQobjInstruction, PulseQobjHeader
+from qiskit.qobj import PulseQobjExperimentHeader, PulseQobjExperimentConfig
+from qiskit.qobj import QobjConditional, QobjPulseLibrary, QobjMeasurementOption
+
+from qiskit.exceptions import QiskitError
 
 
 def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None):
@@ -121,3 +127,87 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
 
     return QASMQobj(qobj_id=qobj_id or str(uuid.uuid4()), config=userconfig,
                     experiments=experiments, header=qobj_header)
+
+
+def assemble_schedules(schedules, dict_config, dict_header):
+    """Assembles a list of circuits into a qobj which can be run on the backend.
+
+    Args:
+        schedules (list[PulseSchedule] or PulseSchedule): schedules to assemble
+        dict_config (dict): configuration of experiments
+        dict_header (dict): header to pass to the results
+
+    Returns:
+        PulseQobj: the Qobj to be run on the backends
+
+    Raises:
+        QiskitError: when invalid command is provided
+    """
+    if isinstance(schedules, PulseSchedule):
+        schedules = [schedules]
+
+    qobj_config = PulseQobjConfig(**dict_config)
+    qobj_header = PulseQobjHeader(**dict_header)
+    experiments = []
+
+    for schedule in schedules:
+        lo_freqs = {
+            'qubit_lo_freq': schedule.channels.drive.lo_frequencies(),
+            'meas_lo_freq': schedule.channels.measure.lo_frequencies()
+        }
+
+        # generate experimental configuration
+        experimentconfig = PulseQobjExperimentConfig(**lo_freqs)
+
+        # generate experimental header
+        experimentheader = PulseQobjExperimentHeader(name=schedule.name)
+
+        # TODO: support conditional gate
+        commands = []
+        for pulse in schedule.flat_pulse_sequence():
+            current_command = PulseQobjInstruction(name=pulse.command.name,
+                                                   t0=pulse.start_time())
+            if isinstance(pulse.command, SamplePulse):
+                current_command.ch = pulse.channel.name
+            elif isinstance(pulse.command, FrameChange):
+                current_command.ch = pulse.channel.name
+                current_command.phase = pulse.command.phase
+            elif isinstance(pulse.command, PersistentValue):
+                current_command.ch = pulse.channel.name
+                current_command.val = pulse.command.value
+            elif isinstance(pulse.command, Acquire):
+                # TODO: support multi-pubit acquisition
+                current_command.qubits = [pulse.channel.index]
+                current_command.memory_slot = [pulse.channel.index]
+                if qobj_config.meas_level == 2:
+                    current_command.register_slot = [pulse.channel.index]
+                    _discriminator = pulse.command.discriminator
+                    if _discriminator:
+                        qobj_discriminator = QobjMeasurementOption(name=_discriminator.name,
+                                                                   params=_discriminator.params)
+                        current_command.discriminators = [qobj_discriminator]
+                    else:
+                        current_command.discriminators = []
+                    current_command.discriminators = pulse.command.discriminator.to_dict()
+                if qobj_config.meas_level >= 1:
+                    _kernel = pulse.command.kernel
+                    if _kernel:
+                        qobj_kernel = QobjMeasurementOption(name=_kernel.name,
+                                                            params=_kernel.params)
+                        current_command.kernels = [qobj_kernel]
+                    else:
+                        current_command.kernels = []
+            elif isinstance(pulse.command, Snapshot):
+                current_command.label = pulse.command.label
+                current_command.type = pulse.command.type
+            else:
+                raise QiskitError('Invalid command is given, %s' % pulse.command.name)
+
+            commands.append(current_command)
+
+        experiments.append(PulseQobjExperiment(instructions=commands,
+                                               header=experimentheader,
+                                               config=experimentconfig))
+
+        return PulseQobj(qobj_id=str(uuid.uuid4()), config=qobj_config,
+                         experiments=experiments, header=qobj_header)

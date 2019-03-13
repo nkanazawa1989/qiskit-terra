@@ -152,7 +152,7 @@ class TestPulseQobj(QiskitTestCase):
                     PulseQobjInstruction(name='fc', t0=5, ch='d0', phase=1.57),
                     PulseQobjInstruction(name='pv', t0=10, ch='d0', val=0.1 + 0.0j),
                     PulseQobjInstruction(name='acquire', t0=15, duration=5,
-                                         qubit=[0], memory_slot=[0],
+                                         qubits=[0], memory_slot=[0],
                                          kernels=[
                                              QobjMeasurementOption(name='boxcar',
                                                                    params={"start_window": 0,
@@ -186,7 +186,7 @@ class TestPulseQobj(QiskitTestCase):
                     {'name': 'fc', 't0': 5, 'ch': 'd0', 'phase': 1.57},
                     {'name': 'pv', 't0': 10, 'ch': 'd0', 'val': [0.1, 0.0]},
                     {'name': 'acquire', 't0': 15, 'duration': 5,
-                     'qubit': [0], 'memory_slot': [0],
+                     'qubits': [0], 'memory_slot': [0],
                      'kernels': [{'name': 'boxcar',
                                   'params': {'start_window': 0,
                                              'stop_window': 5}}

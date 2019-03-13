@@ -42,7 +42,7 @@ class Acquire(PulseCommand):
             else:
                 raise QiskitError('Invalid discriminator object is specified.')
         else:
-            self.discriminator = Discriminator()
+            self.discriminator = None
 
         if kernel:
             if isinstance(kernel, Kernel):
@@ -50,7 +50,7 @@ class Acquire(PulseCommand):
             else:
                 raise QiskitError('Invalid kernel object is specified.')
         else:
-            self.kernel = Kernel()
+            self.kernel = None
 
     def __eq__(self, other):
         """Two Acquires are the same if they are of the same type

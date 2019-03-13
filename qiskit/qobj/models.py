@@ -144,7 +144,7 @@ class PulseQobjInstructionSchema(BaseQobjInstructionSchema):
     phase = Number()
     val = Complex()
     duration = Integer(validate=Range(min=1))
-    qubit = List(Integer(validate=Range(min=0)), validate=Length(min=1))
+    qubits = List(Integer(validate=Range(min=0)), validate=Length(min=1))
     memory_slot = List(Integer(validate=Range(min=0)), validate=Length(min=1))
     register_slot = List(Integer(validate=Range(min=0)), validate=Length(min=1))
     kernels = Nested(QobjMeasurementOptionSchema, many=True)
