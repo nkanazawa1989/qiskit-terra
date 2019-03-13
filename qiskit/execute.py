@@ -176,7 +176,7 @@ def execute_schedules(schedules, backend, **kwargs):
 
     # filling in the header with the backend name the qobj was run on
     header = {
-        'name': backend.name()
+        'backend_name': backend.name()
     }
 
     qobj = assemble_schedules(schedules=schedules, dict_header=header, dict_config=config)

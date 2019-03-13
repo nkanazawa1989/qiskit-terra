@@ -183,6 +183,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 current_command.val = pulse.command.value
             elif isinstance(pulse.command, Acquire):
                 # TODO: support multi-pubit acquisition
+                current_command.duration = pulse.command.duration
                 current_command.qubits = [pulse.channel.index]
                 current_command.memory_slot = [pulse.channel.index]
                 if dict_config['meas_level'] == 2:
