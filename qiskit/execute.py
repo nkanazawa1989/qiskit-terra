@@ -169,7 +169,7 @@ def execute_schedules(schedules, backend, **kwargs):
         'pulse_library': backend_config.defaults.get('pulse_library', []),
         'qubit_lo_freq': backend_config.defaults['qubit_freq_est'],
         'meas_lo_freq': backend_config.defaults['meas_freq_est'],
-        'rep_time': backend_config.rep_times[0]
+        'rep_time': backend_config.rep_times[-1]
     }
     for key, value in kwargs.items():
         config[key] = value
