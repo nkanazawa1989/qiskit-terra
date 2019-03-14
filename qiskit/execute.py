@@ -164,6 +164,7 @@ def execute_schedules(schedules, backend, **kwargs):
     # filling in the config with backend defaults and user defined
     config = {
         'meas_level': 1,
+        'memory_slots': backend_config.n_qubits,
         'memory_slot_size': 100,
         'meas_return': 'avg',
         'pulse_library': backend_config.defaults.get('pulse_library', []),
@@ -176,7 +177,8 @@ def execute_schedules(schedules, backend, **kwargs):
 
     # filling in the header with the backend name the qobj was run on
     header = {
-        'backend_name': backend.name()
+        'backend_name': backend.name(),
+        'backend_version': backend_config.backend_version
     }
 
     qobj = assemble_schedules(schedules=schedules, dict_header=header, dict_config=config)

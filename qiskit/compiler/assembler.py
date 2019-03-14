@@ -182,12 +182,14 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 current_command.ch = pulse.channel.name
                 current_command.val = pulse.command.value
             elif isinstance(pulse.command, Acquire):
-                # TODO: support multi-pubit acquisition
+                # TODO: now all qubit are measured at once regardless of channel definition
+                n_qubit = dict_config['memory_slots']
+
                 current_command.duration = pulse.command.duration
-                current_command.qubits = [pulse.channel.index]
-                current_command.memory_slot = [pulse.channel.index]
+                current_command.qubits = list(range(n_qubit))
+                current_command.memory_slot = list(range(n_qubit))
                 if dict_config['meas_level'] == 2:
-                    current_command.register_slot = [pulse.channel.index]
+                    current_command.register_slot = list(range(n_qubit))
                     _discriminator = pulse.command.discriminator
                     if _discriminator:
                         qobj_discriminator = QobjMeasurementOption(name=_discriminator.name,
