@@ -7,3 +7,10 @@
 
 """Module for Pulses."""
 from .exceptions import ChannelsError, CommandsError, ScheduleError
+
+from .commands import (Acquire, FrameChange, FunctionalPulse, PersistentValue,
+                       SamplePulse, Snapshot, Kernel, Discriminator)
+
+from .channels import ChannelStore
+
+from .schedule import PulseSchedule
