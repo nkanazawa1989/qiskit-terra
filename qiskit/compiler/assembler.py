@@ -153,9 +153,8 @@ def assemble_schedules(schedules, dict_config, dict_header):
         # add new pulses in the schedule
         cmds = schedule.get_sample_pulses()
         for cmd in cmds:
-            pulse = {'name': cmd.name, 'samples': cmd.samples}
-            if pulse not in dict_config['pulse_library']:
-                dict_config['pulse_library'].append(pulse)
+            if cmd.name not in [libcmd['name'] for libcmd in dict_config['pulse_library']]:
+                dict_config['pulse_library'].append({'name': cmd.name, 'samples': cmd.samples})
 
         lo_freqs = {
             'qubit_lo_freq': schedule.channels.drive.lo_frequencies(),
