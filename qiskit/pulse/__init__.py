@@ -6,11 +6,13 @@
 # the LICENSE.txt file in the root directory of this source tree.
 
 """Module for Pulses."""
+
 from .exceptions import ChannelsError, CommandsError, ScheduleError
 
-from .commands import (Acquire, FrameChange, FunctionalPulse, PersistentValue,
-                       SamplePulse, Snapshot, Kernel, Discriminator)
+from qiskit.pulse.commands import (Acquire, FrameChange, PersistentValue,
+                                   SamplePulse, Snapshot,
+                                   Kernel, Discriminator, function)
 
-from .channels import ChannelStore
+from qiskit.pulse.channels import ChannelStore
 
-from .schedule import PulseSchedule
+from qiskit.pulse.schedule import Schedule

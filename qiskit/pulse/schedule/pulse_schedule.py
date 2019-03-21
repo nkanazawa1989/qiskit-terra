@@ -10,12 +10,12 @@ Schedule.
 """
 import logging
 import pprint
-from collections import defaultdict
 from abc import ABCMeta, abstractmethod
-from typing import List, Union
+from collections import defaultdict
+from typing import List
 
 from qiskit.pulse.channels import PulseChannel, ChannelStore
-from qiskit.pulse.commands import PulseCommand, FunctionalPulse, SamplePulse
+from qiskit.pulse.commands import PulseCommand, SamplePulse
 from qiskit.pulse.exceptions import ScheduleError
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class TimedPulse(TimedPulseBlock):
         return "(%s, %s, %d)" % (self.command.name, self.channel.name, self.t0)
 
 
-class PulseSchedule(TimedPulseBlock):
+class Schedule(TimedPulseBlock):
     """Schedule."""
 
     def __init__(self,
@@ -105,40 +105,33 @@ class PulseSchedule(TimedPulseBlock):
             channel (PulseChannel):
         """
         try:
-            start_time = self.end_time_by(channel)  # TODO: need to add buffer?
-            self.add_block(TimedPulse(command, channel, start_time))
+            start_time = self.end_time()  # TODO: need to add buffer?
+            self._add(TimedPulse(command, channel, start_time))
         except ScheduleError as err:
             logger.warning("Fail to append %s to %s", command, channel)
             raise ScheduleError(err.message)
 
-    def add(self,
-            commands: Union[PulseCommand, List[PulseCommand]],
-            channel: PulseChannel,
-            start_time: int):
-        """Add new pulse command(s) with channel and start time context.
+    def insert(self, start_time: int, command: PulseCommand, channel: PulseChannel):
+        """Insert new pulse command with `channel` at `start_time`.
 
         Args:
-            commands (PulseCommand|list):
-            channel:
             start_time:
+            command (PulseCommand):
+            channel:
         """
-        if isinstance(commands, PulseCommand):
-            try:
-                self.add_block(TimedPulse(commands, channel, start_time))
-            except ScheduleError as err:
-                logger.warning("Fail to add %s to %s at %s", commands, channel, start_time)
-                raise ScheduleError(err.message)
-        elif isinstance(commands, list):
-            for cmd in commands:
-                self.add(cmd, channel, start_time)
+        try:
+            self._add(TimedPulse(command, channel, start_time))
+        except ScheduleError as err:
+            logger.warning("Fail to insert %s to %s at %s", command, channel, start_time)
+            raise ScheduleError(err.message)
 
-    def add_block(self, block: TimedPulseBlock):
+    def _add(self, block: TimedPulseBlock):
         """Add a new composite pulse `TimedPulseBlock`.
 
         Args:
             block:
         """
-        if isinstance(block, PulseSchedule):
+        if isinstance(block, Schedule):
             if self._channel_store is not block._channel_store:
                 raise ScheduleError("Additional block must have the same channels as self")
 
@@ -149,10 +142,10 @@ class PulseSchedule(TimedPulseBlock):
             self._children.append(block)
 
     def start_time(self) -> int:
-        return min([self._start_time(child) for child in self._children])
+        return min([self._start_time(child) for child in self._children], default=0)
 
     def end_time(self) -> int:
-        return max([self._end_time(child) for child in self._children])
+        return max([self._end_time(child) for child in self._children], default=0)
 
     def end_time_by(self, channel: PulseChannel) -> int:
         """End time of the occupation in this schedule on a `channel`.
@@ -219,7 +212,7 @@ class PulseSchedule(TimedPulseBlock):
         # TODO: Improve implementation (compute at add and remove would be better)
         lib = []
         for tp in self._children:
-            if isinstance(tp.command, (FunctionalPulse, SamplePulse)) and \
+            if isinstance(tp.command, SamplePulse) and \
                     tp.command not in lib:
                 lib.append(tp.command)
         return lib
