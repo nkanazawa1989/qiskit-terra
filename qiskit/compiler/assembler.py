@@ -12,7 +12,7 @@ import numpy
 import sympy
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.pulse.schedule import PulseSchedule
+from qiskit.pulse.schedule import Schedule
 from qiskit.pulse.commands import SamplePulse, FrameChange, PersistentValue, Acquire, Snapshot
 from qiskit.compiler.run_config import RunConfig
 from qiskit.qobj import QASMQobj, PulseQobj
@@ -143,7 +143,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
     Raises:
         QiskitError: when invalid command is provided
     """
-    if isinstance(schedules, PulseSchedule):
+    if isinstance(schedules, Schedule):
         schedules = [schedules]
 
     experiments = []
