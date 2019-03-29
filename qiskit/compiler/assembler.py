@@ -12,16 +12,13 @@ import numpy
 import sympy
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.pulse.schedule import Schedule
-from qiskit.pulse.commands import SamplePulse, FrameChange, PersistentValue, Acquire, Snapshot
+from qiskit.pulse import Schedule, SamplePulse, FrameChange, PersistentValue, Acquire, Snapshot
 from qiskit.compiler.run_config import RunConfig
-from qiskit.qobj import QASMQobj, PulseQobj
-from qiskit.qobj import QASMQobjConfig, QASMQobjExperiment, QASMQobjInstruction, QASMQobjHeader
-from qiskit.qobj import QASMQobjExperimentConfig, QASMQobjExperimentHeader
-from qiskit.qobj import PulseQobjConfig, PulseQobjExperiment, PulseQobjInstruction, PulseQobjHeader
-from qiskit.qobj import PulseQobjExperimentHeader, PulseQobjExperimentConfig
-from qiskit.qobj import QobjConditional, QobjPulseLibrary, QobjMeasurementOption
-
+from qiskit.qobj import (QasmQobj, PulseQobj, QobjExperimentHeader, QobjHeader,
+                         QasmQobjInstruction, QasmQobjExperimentConfig, QasmQobjExperiment,
+                         QasmQobjConfig, QobjConditional,
+                         PulseQobjInstruction, PulseQobjExperimentConfig, PulseQobjExperiment,
+                         PulseQobjConfig, QobjPulseLibrary, QobjMeasurementOption)
 from qiskit.exceptions import QiskitError
 
 
@@ -31,18 +28,18 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
     Args:
         circuits (list[QuantumCircuits] or QuantumCircuit): circuits to assemble
         run_config (RunConfig): RunConfig object
-        qobj_header (QASMQobjHeader): header to pass to the results
+        qobj_header (QobjHeader): header to pass to the results
         qobj_id (int): identifier for the generated qobj
 
     Returns:
-        QASMQobj: the Qobj to be run on the backends
+        QasmQobj: the Qobj to be run on the backends
     """
-    qobj_header = qobj_header or QASMQobjHeader()
+    qobj_header = qobj_header or QobjHeader()
     run_config = run_config or RunConfig()
     if isinstance(circuits, QuantumCircuit):
         circuits = [circuits]
 
-    userconfig = QASMQobjConfig(**run_config.to_dict())
+    userconfig = QasmQobjConfig(**run_config.to_dict())
     experiments = []
     max_n_qubits = 0
     max_memory_slots = 0
@@ -68,19 +65,19 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
 
         # TODO: why do we need creq_sizes and qreg_sizes in header
         # TODO: we need to rethink memory_slots as they are tied to classical bit
-        experimentheader = QASMQobjExperimentHeader(qubit_labels=qubit_labels,
-                                                    n_qubits=n_qubits,
-                                                    qreg_sizes=qreg_sizes,
-                                                    clbit_labels=clbit_labels,
-                                                    memory_slots=memory_slots,
-                                                    creg_sizes=creg_sizes,
-                                                    name=circuit.name)
+        experimentheader = QobjExperimentHeader(qubit_labels=qubit_labels,
+                                                n_qubits=n_qubits,
+                                                qreg_sizes=qreg_sizes,
+                                                clbit_labels=clbit_labels,
+                                                memory_slots=memory_slots,
+                                                creg_sizes=creg_sizes,
+                                                name=circuit.name)
         # TODO: why do we need n_qubits and memory_slots in both the header and the config
-        experimentconfig = QASMQobjExperimentConfig(n_qubits=n_qubits, memory_slots=memory_slots)
+        experimentconfig = QasmQobjExperimentConfig(n_qubits=n_qubits, memory_slots=memory_slots)
 
         instructions = []
         for opt in circuit.data:
-            current_instruction = QASMQobjInstruction(name=opt.name)
+            current_instruction = QasmQobjInstruction(name=opt.name)
             if opt.qargs:
                 qubit_indices = [qubit_labels.index([qubit[0].name, qubit[1]])
                                  for qubit in opt.qargs]
@@ -115,7 +112,7 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
                                                                   val="0x%X" % opt.control[1])
 
             instructions.append(current_instruction)
-        experiments.append(QASMQobjExperiment(instructions=instructions, header=experimentheader,
+        experiments.append(QasmQobjExperiment(instructions=instructions, header=experimentheader,
                                               config=experimentconfig))
         if n_qubits > max_n_qubits:
             max_n_qubits = n_qubits
@@ -125,7 +122,7 @@ def assemble_circuits(circuits, run_config=None, qobj_header=None, qobj_id=None)
     userconfig.memory_slots = max_memory_slots
     userconfig.n_qubits = max_n_qubits
 
-    return QASMQobj(qobj_id=qobj_id or str(uuid.uuid4()), config=userconfig,
+    return QasmQobj(qobj_id=qobj_id or str(uuid.uuid4()), config=userconfig,
                     experiments=experiments, header=qobj_header)
 
 
@@ -157,15 +154,15 @@ def assemble_schedules(schedules, dict_config, dict_header):
                 dict_config['pulse_library'].append({'name': cmd.name, 'samples': cmd.samples})
 
         lo_freqs = {
-            'qubit_lo_freq': schedule.channels.drive.lo_frequencies(),
-            'meas_lo_freq': schedule.channels.measure.lo_frequencies()
+            'qubit_lo_freq': [q.drive.lo_frequency for q in schedule.device.q],
+            'meas_lo_freq': [q.measure.lo_frequency for q in schedule.device.q]
         }
 
         # generate experimental configuration
         experimentconfig = PulseQobjExperimentConfig(**lo_freqs)
 
         # generate experimental header
-        experimentheader = PulseQobjExperimentHeader(name=schedule.name)
+        experimentheader = QobjExperimentHeader(name=schedule.name)
 
         # TODO: support conditional gate
         commands = []
@@ -183,10 +180,10 @@ def assemble_schedules(schedules, dict_config, dict_header):
             elif isinstance(pulse.command, Acquire):
                 # TODO: now all qubit are measured at once regardless of channel definition
                 n_qubit = dict_config['memory_slots']
-
                 current_command.duration = pulse.command.duration
                 current_command.qubits = list(range(n_qubit))
                 current_command.memory_slot = list(range(n_qubit))
+                # apply discriminator
                 if dict_config['meas_level'] == 2:
                     current_command.register_slot = list(range(n_qubit))
                     _discriminator = pulse.command.discriminator
@@ -196,7 +193,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
                         current_command.discriminators = [qobj_discriminator]
                     else:
                         current_command.discriminators = []
-                    current_command.discriminators = pulse.command.discriminator.to_dict()
+                # apply kernel
                 if dict_config['meas_level'] >= 1:
                     _kernel = pulse.command.kernel
                     if _kernel:
@@ -225,7 +222,7 @@ def assemble_schedules(schedules, dict_config, dict_header):
     dict_config['pulse_library'] = qobj_pulselib
 
     qobj_config = PulseQobjConfig(**dict_config)
-    qobj_header = PulseQobjHeader(**dict_header)
+    qobj_header = QobjHeader(**dict_header)
 
     return PulseQobj(qobj_id=str(uuid.uuid4()), config=qobj_config,
                      experiments=experiments, header=qobj_header)

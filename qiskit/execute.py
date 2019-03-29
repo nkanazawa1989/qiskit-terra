@@ -21,8 +21,7 @@ import warnings
 
 from qiskit.compiler import assemble_circuits, assemble_schedules, transpile
 from qiskit.compiler import RunConfig, TranspileConfig
-from qiskit.qobj import QASMQobjHeader
-
+from qiskit.qobj import QobjHeader
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ def execute(circuits, backend, qobj_header=None, config=None, basis_gates=None,
     Args:
         circuits (QuantumCircuit or list[QuantumCircuit]): circuits to execute
         backend (BaseBackend): a backend to execute the circuits on
-        qobj_header (QASMQobjHeader): user input to go into the header
+        qobj_header (QobjHeader): user input to go into the header
         config (dict): dictionary of parameters (e.g. noise) used by runner
         basis_gates (list[str]): list of basis gate names supported by the
             target. Default: ['u1','u2','u3','cx','id']
@@ -97,7 +96,7 @@ def execute_circuits(circuits, backend, qobj_header=None,
     Args:
         circuits (QuantumCircuit or list[QuantumCircuit]): circuits to execute
         backend (BaseBackend): a backend to execute the circuits on
-        qobj_header (QASMQobjHeader): User input to go in the header
+        qobj_header (QobjHeader): User input to go in the header
         transpile_config (TranspileConfig): Configurations for the transpiler
         run_config (RunConfig): Run Configuration
         kwargs: extra arguments used by AER for running configurable backends.
@@ -114,7 +113,7 @@ def execute_circuits(circuits, backend, qobj_header=None,
     # ------
 
     # filling in the header with the backend name the qobj was run on
-    qobj_header = qobj_header or QASMQobjHeader()
+    qobj_header = qobj_header or QobjHeader()
     qobj_header.backend_name = backend.name()
 
     # default values
@@ -172,8 +171,7 @@ def execute_schedules(schedules, backend, **kwargs):
         'meas_lo_freq': backend_config.defaults['meas_freq_est'],
         'rep_time': backend_config.rep_times[-1]
     }
-    for key, value in kwargs.items():
-        config[key] = value
+    config.update(kwargs)
 
     # filling in the header with the backend name the qobj was run on
     header = {
