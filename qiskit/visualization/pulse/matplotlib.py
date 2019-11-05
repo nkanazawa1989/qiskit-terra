@@ -223,7 +223,7 @@ class SamplePulseDrawer:
         """
         self.style = style or PulseStyle()
 
-    def draw(self, pulse, dt, interp_method, scaling=1):
+    def draw(self, pulse, dt, interp_method, scaling=1, axis=None):
         """Draw figure.
 
         Args:
@@ -232,16 +232,22 @@ class SamplePulseDrawer:
             interp_method (Callable): interpolation function
                 See `qiskit.visualization.interpolation` for more information
             scaling (float): Relative visual scaling of waveform amplitudes
+            axis (matplotlib.axes.Axes): An optional Axes object to be used for
+            the visualization output.
 
         Returns:
             matplotlib.figure: A matplotlib figure object of the pulse envelope
+                iff axis is not provided.
         """
-        figure = plt.figure()
-
         interp_method = interp_method or interpolation.step_wise
 
-        figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
-        ax = figure.add_subplot(111)
+        if axis is None:
+            figure = plt.figure()
+            figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
+            ax = figure.add_subplot(111)
+        else:
+            figure = axis.get_figure()
+            ax = axis
         ax.set_facecolor(self.style.bg_color)
 
         samples = pulse.samples
@@ -266,7 +272,8 @@ class SamplePulseDrawer:
             v_max = max(max(np.abs(re)), max(np.abs(im)))
             ax.set_ylim(-1.2 * v_max, 1.2 * v_max)
 
-        return figure
+        if axis is None:
+            return figure
 
 
 class ScheduleDrawer:
@@ -335,10 +342,8 @@ class ScheduleDrawer:
                     snapshot_channels[channel].add_instruction(start_time, instruction)
         return channels, output_channels, snapshot_channels
 
-    def _count_valid_waveforms(self, channels, scaling=1, channels_to_plot=None,
-                               plot_all=False):
-        # count numbers of valid waveform
-        n_valid_waveform = 0
+    def _check_valid_events(self, channels, scaling=1, channels_to_plot=None,
+                            plot_all=False):
         v_max = 0
         for channel, events in channels.items():
             if channels_to_plot:
@@ -347,7 +352,6 @@ class ScheduleDrawer:
                     v_max = max(v_max,
                                 max(np.abs(np.real(waveform))),
                                 max(np.abs(np.imag(waveform))))
-                    n_valid_waveform += 1
                     events.enable = True
             else:
                 if not events.is_empty() or plot_all:
@@ -355,7 +359,6 @@ class ScheduleDrawer:
                     v_max = max(v_max,
                                 max(np.abs(np.real(waveform))),
                                 max(np.abs(np.imag(waveform))))
-                    n_valid_waveform += 1
                     events.enable = True
 
         # when input schedule is empty or comprises only frame changes,
@@ -364,65 +367,34 @@ class ScheduleDrawer:
         v_max = v_max or 1
 
         if scaling:
-            v_max = 0.5 * scaling
+            return 0.5 * scaling
         else:
-            v_max = 0.5 / (v_max)
-
-        return n_valid_waveform, v_max
+            return 0.5 / v_max
 
     # pylint: disable=unused-argument
-    def _draw_table(self, figure, channels, dt, n_valid_waveform):
-        # create table
-        table_data = []
-        if self.style.use_table:
-            for channel, events in channels.items():
-                if events.enable:
-                    table_data.extend(events.to_table(channel.name))
-            table_data = sorted(table_data, key=lambda x: x[0])
-
-        # plot table
-        if table_data:
-            # table area size
-            ncols = self.style.table_columns
-            nrows = int(np.ceil(len(table_data)/ncols))
-
-            # fig size
-            h_table = nrows * self.style.fig_unit_h_table
-            h_waves = (self.style.figsize[1] - h_table)
-
-            # create subplots
-            gs = gridspec.GridSpec(2, 1, height_ratios=[h_table, h_waves], hspace=0)
-            tb = plt.subplot(gs[0])
-            ax = plt.subplot(gs[1])
-
-            # configure each cell
-            tb.axis('off')
-            cell_value = [['' for _kk in range(ncols * 3)] for _jj in range(nrows)]
-            cell_color = [self.style.table_color * ncols for _jj in range(nrows)]
-            cell_width = [*([0.2, 0.2, 0.5] * ncols)]
-            for ii, data in enumerate(table_data):
-                # pylint: disable=unbalanced-tuple-unpacking
-                r, c = np.unravel_index(ii, (nrows, ncols), order='f')
-                # pylint: enable=unbalanced-tuple-unpacking
-                time, ch_name, data_str = data
-                # item
-                cell_value[r][3 * c + 0] = 't = %s' % time * dt
-                cell_value[r][3 * c + 1] = 'ch %s' % ch_name
-                cell_value[r][3 * c + 2] = data_str
-            table = tb.table(cellText=cell_value,
-                             cellLoc='left',
-                             rowLoc='center',
-                             colWidths=cell_width,
-                             bbox=[0, 0, 1, 1],
-                             cellColours=cell_color)
-            table.auto_set_font_size(False)
-            table.set_fontsize = self.style.table_font_size
-        else:
-            ax = figure.add_subplot(111)
-
-        figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
-
-        return ax
+    def _draw_table(self, tb, ncols, nrows, table_data, dt):
+        # configure each cell
+        tb.axis('off')
+        cell_value = [['' for _kk in range(ncols * 3)] for _jj in range(nrows)]
+        cell_color = [self.style.table_color * ncols for _jj in range(nrows)]
+        cell_width = [*([0.2, 0.2, 0.5] * ncols)]
+        for ii, data in enumerate(table_data):
+            # pylint: disable=unbalanced-tuple-unpacking
+            r, c = np.unravel_index(ii, (nrows, ncols), order='f')
+            # pylint: enable=unbalanced-tuple-unpacking
+            time, ch_name, data_str = data
+            # item
+            cell_value[r][3 * c + 0] = 't = %s' % time * dt
+            cell_value[r][3 * c + 1] = 'ch %s' % ch_name
+            cell_value[r][3 * c + 2] = data_str
+        table = tb.table(cellText=cell_value,
+                         cellLoc='left',
+                         rowLoc='center',
+                         colWidths=cell_width,
+                         bbox=[0, 0, 1, 1],
+                         cellColours=cell_color)
+        table.auto_set_font_size(False)
+        table.set_fontsize = self.style.table_font_size
 
     def _draw_snapshots(self, ax, snapshot_channels, dt, y0):
         for events in snapshot_channels.values():
@@ -548,7 +520,8 @@ class ScheduleDrawer:
 
     def draw(self, schedule, dt, interp_method, plot_range,
              scaling=None, channels_to_plot=None, plot_all=True,
-             table=True, label=False, framechange=True):
+             table=True, label=False, framechange=True,
+             axis=None, axis_table=None):
         """Draw figure.
 
         Args:
@@ -563,14 +536,18 @@ class ScheduleDrawer:
             table (bool): Draw event table
             label (bool): Label individual instructions
             framechange (bool): Add framechange indicators
+            axis (matplotlib.axes.Axes): An optional Axes object to be used for
+            the visualization output.
+            axis_table (matplotlib.axes.Axes): An optional Axes object to be used for
+            the event table output.
 
         Returns:
             matplotlib.figure: A matplotlib figure object for the pulse schedule
+                iff axis is not provided.
+
         Raises:
             VisualizationError: when schedule cannot be drawn
         """
-        figure = plt.figure()
-
         if not channels_to_plot:
             channels_to_plot = []
         interp_method = interp_method or interpolation.step_wise
@@ -590,16 +567,43 @@ class ScheduleDrawer:
          snapshot_channels) = self._build_channels(schedule, channels_to_plot, t0, tf)
 
         # count numbers of valid waveform
-        n_valid_waveform, v_max = self._count_valid_waveforms(output_channels, scaling=scaling,
-                                                              channels_to_plot=channels_to_plot,
-                                                              plot_all=plot_all)
+        v_max = self._check_valid_events(output_channels, scaling=scaling,
+                                         channels_to_plot=channels_to_plot,
+                                         plot_all=plot_all)
 
-        if table:
-            ax = self._draw_table(figure, channels, dt, n_valid_waveform)
+        # create table data
+        table_data = []
+        ncols = self.style.table_columns
+        nrows = 0
+        if self.style.use_table:
+            for channel, events in channels.items():
+                if events.enable:
+                    table_data.extend(events.to_table(channel.name))
+            table_data = sorted(table_data, key=lambda x: x[0])
+            nrows = int(np.ceil(len(table_data) / ncols))
 
-        else:
-            ax = figure.add_subplot(111)
+        if axis is None:
+            figure = plt.figure()
+            if table:
+                if nrows > 0:
+                    h_table = nrows * self.style.fig_unit_h_table
+                    h_waves = (self.style.figsize[1] - h_table)
+
+                    # create subplots
+                    gs = gridspec.GridSpec(2, 1, height_ratios=[h_table, h_waves], hspace=0)
+                    tb = plt.subplot(gs[0])
+                    ax = plt.subplot(gs[1])
+                    self._draw_table(tb, ncols, nrows, table_data, dt)
+                else:
+                    ax = figure.add_subplot(111)
+            else:
+                ax = figure.add_subplot(111)
             figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
+        else:
+            figure = axis.get_figure()
+            ax = axis
+            if axis_table and table and nrows > 0:
+                self._draw_table(axis_table, ncols, nrows, table_data, dt)
 
         ax.set_facecolor(self.style.bg_color)
 
@@ -613,4 +617,5 @@ class ScheduleDrawer:
         ax.set_ylim(y0, 1)
         ax.set_yticklabels([])
 
-        return figure
+        if axis is None:
+            return figure

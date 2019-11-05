@@ -29,7 +29,8 @@ if _matplotlib.HAS_MATPLOTLIB:
 def pulse_drawer(data, dt=1, style=None, filename=None,
                  interp_method=None, scaling=None, channels_to_plot=None,
                  plot_all=False, plot_range=None, interactive=False,
-                 table=True, label=False, framechange=True):
+                 table=True, label=False, framechange=True,
+                 axis=None, axis_table=None):
     """Plot the interpolated envelope of pulse
 
     Args:
@@ -49,6 +50,10 @@ def pulse_drawer(data, dt=1, style=None, filename=None,
         table (bool): Draw event table for supported commands
         label (bool): Label individual instructions
         framechange (bool): Add framechange indicators
+        axis (matplotlib.axes.Axes): An optional Axes object to be used for
+        the visualization output.
+        axis_table (matplotlib.axes.Axes): An optional Axes object to be used for
+        the event table output.
     Returns:
         matplotlib.figure: A matplotlib figure object for the pulse envelope
     Raises:
@@ -59,15 +64,19 @@ def pulse_drawer(data, dt=1, style=None, filename=None,
         raise ImportError('Must have Matplotlib installed.')
     if isinstance(data, SamplePulse):
         drawer = _matplotlib.SamplePulseDrawer(style=style)
-        image = drawer.draw(data, dt=dt, interp_method=interp_method, scaling=scaling)
+        image = drawer.draw(data, dt=dt, interp_method=interp_method, scaling=scaling,
+                            axis=axis)
     elif isinstance(data, (Schedule, Instruction)):
         drawer = _matplotlib.ScheduleDrawer(style=style)
         image = drawer.draw(data, dt=dt, interp_method=interp_method, scaling=scaling,
                             plot_range=plot_range, channels_to_plot=channels_to_plot,
                             plot_all=plot_all, table=table, label=label,
-                            framechange=framechange)
+                            framechange=framechange, axis=axis, axis_table=axis_table)
     else:
         raise VisualizationError('This data cannot be visualized.')
+
+    if image is None:
+        return
 
     if filename:
         image.savefig(filename, dpi=drawer.style.dpi, bbox_inches='tight')
