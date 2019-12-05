@@ -1,0 +1,28 @@
+---
+features:
+  - |
+    Add ``plot_quantum_channel_city`` function to visualization module.
+    This function visualize Chi-matrix given by arbitrary quantum channel object
+    in a cityscape fashion, for example::
+
+        from qiskit import QuantumCircuit
+        from qiskit import quantum_info as qi
+        from qiskit.visualization import plot_process_city
+
+        qc = QuantumCircuit(2)
+        qc.cx(0, 1)
+
+        plot_quantum_channel_city(qc)
+  - |
+    Add ``plot_quantum_channel_hinton`` function to visualization module.
+    This function visualize Chi-matrix given by arbitrary quantum channel object
+    as a Hinton diagram, for example::
+
+        from qiskit import QuantumCircuit
+        from qiskit import quantum_info as qi
+        from qiskit.visualization import plot_process_city
+
+        qc = QuantumCircuit(2)
+        qc.cx(0, 1)
+
+        plot_quantum_channel_hinton(qc)
