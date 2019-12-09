@@ -34,6 +34,7 @@ from qiskit.pulse.channels import (DriveChannel, ControlChannel,
                                    SnapshotChannel)
 from qiskit.pulse import (SamplePulse, FrameChange, PersistentValue, Snapshot,
                           Acquire, PulseError)
+from qiskit.pulse.commands.frame_change import FrameChangeInstruction
 
 
 class EventsOutputChannels:
@@ -281,17 +282,23 @@ class ScheduleDrawer:
         """
         self.style = style or SchedStyle()
 
-    def _build_channels(self, schedule, channels, t0, tf):
+    def _build_channels(self, schedule, channels, t0, tf, show_framechange_channels=True):
         # prepare waveform channels
         drive_channels = collections.OrderedDict()
         measure_channels = collections.OrderedDict()
         control_channels = collections.OrderedDict()
         acquire_channels = collections.OrderedDict()
         snapshot_channels = collections.OrderedDict()
+        _channels = set()
+        if show_framechange_channels:
+            _channels.update(schedule.channels)
+        # take channels that do not only contain framechanges
+        else:
+            for start_time, instruction in schedule.instructions:
+                if not isinstance(instruction, FrameChangeInstruction):
+                    _channels.update(instruction.channels)
 
-        _channels = list(schedule.channels) + channels
-        _channels = list(set(_channels))
-
+        _channels.update(channels)
         for chan in _channels:
             if isinstance(chan, DriveChannel):
                 try:
@@ -336,12 +343,13 @@ class ScheduleDrawer:
                     snapshot_channels[channel].add_instruction(start_time, instruction)
         return channels, output_channels, snapshot_channels
 
-    def _count_valid_waveforms(self, output_channels, scaling=1, channels=None,
+    def _count_valid_waveforms(self, output_channels, scaling=None, channels=None,
                                plot_all=False):
         # count numbers of valid waveform
         n_valid_waveform = 0
-        v_max = 0
+        scaling_channels = {chan: 0 for chan in output_channels.keys()}
         for channel, events in output_channels.items():
+            v_max = 0
             if channels:
                 if channel in channels:
                     waveform = events.waveform
@@ -359,17 +367,18 @@ class ScheduleDrawer:
                     n_valid_waveform += 1
                     events.enable = True
 
-        # when input schedule is empty or comprises only frame changes,
-        # we need to overwrite maximum amplitude by a value greater than zero,
-        # otherwise auto axis scaling will fail with zero division.
-        v_max = v_max or 1
+            scaling_val = scaling.get(channel, None)
+            if not scaling_val:
+                # when input schedule is empty or comprises only frame changes,
+                # we need to overwrite maximum amplitude by a value greater than zero,
+                # otherwise auto axis scaling will fail with zero division.
+                v_max = v_max or 1
 
-        if scaling:
-            v_max = 0.5 * scaling
-        else:
-            v_max = 0.5 / (v_max)
+                scaling_channels[channel] = 1 / v_max
+            else:
+                scaling_channels[channel] = scaling_val
 
-        return n_valid_waveform, v_max
+        return n_valid_waveform, scaling_channels
 
     # pylint: disable=unused-argument
     def _draw_table(self, figure, channels, dt, n_valid_waveform):
@@ -494,6 +503,8 @@ class ScheduleDrawer:
         prev_labels = []
         for channel, events in output_channels.items():
             if events.enable:
+                # scaling value of this channel
+                _v_max = 0.5 * v_max.get(channel, 0.5)
                 # plot waveform
                 waveform = events.waveform
                 time = np.arange(t0, tf + 1, dtype=float) * dt
@@ -506,10 +517,10 @@ class ScheduleDrawer:
                     re, im = np.zeros_like(time), np.zeros_like(time)
                 color = self._get_channel_color(channel)
                 # Minimum amplitude scaled
-                amp_min = v_max * abs(min(0, np.nanmin(re), np.nanmin(im)))
+                amp_min = _v_max * abs(min(0, np.nanmin(re), np.nanmin(im)))
                 # scaling and offset
-                re = v_max * re + y0
-                im = v_max * im + y0
+                re = _v_max * re + y0
+                im = _v_max * im + y0
                 offset = np.zeros_like(time) + y0
                 # plot
                 ax.fill_between(x=time, y1=re, y2=offset,
@@ -539,6 +550,10 @@ class ScheduleDrawer:
             ax.text(x=0, y=y0, s=channel.name,
                     fontsize=self.style.axis_font_size,
                     ha='right', va='center')
+            # show scaling factor
+            ax.text(x=0, y=y0 - 0.1, s='x%.2f' % (2 * _v_max),
+                    fontsize=0.7*self.style.axis_font_size,
+                    ha='right', va='top')
 
             # change the y0 offset for removing spacing when a channel has negative values
             if self.style.remove_spacing:
@@ -550,7 +565,7 @@ class ScheduleDrawer:
     def draw(self, schedule, dt, interp_method, plot_range,
              scaling=None, channels_to_plot=None, plot_all=True,
              table=True, label=False, framechange=True,
-             channels=None):
+             channels=None, show_framechange_channels=True):
         """Draw figure.
 
         Args:
@@ -559,13 +574,14 @@ class ScheduleDrawer:
             interp_method (Callable): interpolation function
                 See `qiskit.visualization.interpolation` for more information
             plot_range (tuple[float]): plot range
-            scaling (float): Relative visual scaling of waveform amplitudes
+            scaling (float or dict[Channel, float]): Relative visual scaling of waveform amplitudes
             channels_to_plot (list[OutputChannel]): deprecated, see `channels`
             plot_all (bool): if plot all channels even it is empty
             table (bool): Draw event table
             label (bool): Label individual instructions
             framechange (bool): Add framechange indicators
             channels (list[OutputChannel]): channels to draw
+            show_framechange_channels (bool): Plot channels with only framechanges
 
         Returns:
             matplotlib.figure: A matplotlib figure object for the pulse schedule
@@ -573,6 +589,11 @@ class ScheduleDrawer:
             VisualizationError: when schedule cannot be drawn
         """
         figure = plt.figure()
+
+        if not isinstance(scaling, dict):
+            scale_dict = {chan: scaling for chan in schedule.channels}
+        else:
+            scale_dict = scaling
 
         if channels_to_plot is not None:
             warnings.warn('The parameter "channels_to_plot" is being replaced by "channels"',
@@ -600,10 +621,11 @@ class ScheduleDrawer:
 
         # prepare waveform channels
         (schedule_channels, output_channels,
-         snapshot_channels) = self._build_channels(schedule, channels, t0, tf)
+         snapshot_channels) = self._build_channels(schedule, channels, t0, tf,
+                                                   show_framechange_channels)
 
         # count numbers of valid waveform
-        n_valid_waveform, v_max = self._count_valid_waveforms(output_channels, scaling=scaling,
+        n_valid_waveform, v_max = self._count_valid_waveforms(output_channels, scaling=scale_dict,
                                                               channels=channels,
                                                               plot_all=plot_all)
 
