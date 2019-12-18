@@ -507,7 +507,9 @@ class ScheduleDrawer:
                 _v_max = 0.5 * v_max.get(channel, 0.5)
                 # plot waveform
                 waveform = events.waveform
+
                 time = np.arange(t0, tf + 1, dtype=float) * dt
+
                 if waveform.any():
                     time, re, im = interp_method(time, waveform, self.style.num_points)
                 else:
@@ -531,7 +533,7 @@ class ScheduleDrawer:
                                 facecolor=color[1], alpha=0.3,
                                 edgecolor=color[1], linewidth=1.5,
                                 label='imaginary part')
-                ax.plot((t0, tf), (y0, y0), color='#000000', linewidth=1.0)
+                ax.plot((t0-50, tf), (y0, y0), color='#000000', linewidth=1.0)
 
                 # plot frame changes
                 fcs = events.framechanges
@@ -547,11 +549,11 @@ class ScheduleDrawer:
                 continue
 
             # plot label
-            ax.text(x=0, y=y0, s=channel.name,
+            ax.text(x=-100, y=y0, s=channel.name,
                     fontsize=self.style.axis_font_size,
                     ha='right', va='center')
             # show scaling factor
-            ax.text(x=0, y=y0 - 0.1, s='x%.2f' % (2 * _v_max),
+            ax.text(x=-100, y=y0 - 0.1, s='x%.2f' % (2 * _v_max),
                     fontsize=0.7*self.style.axis_font_size,
                     ha='right', va='top')
 
@@ -644,8 +646,8 @@ class ScheduleDrawer:
 
         self._draw_snapshots(ax, snapshot_channels, dt, y0)
 
-        ax.set_xlim(t0 * dt, tf * dt)
-        ax.set_ylim(y0, 1)
+        ax.set_xlim(t0 * dt - 50, tf * dt)
+        ax.set_ylim(y0, 0.5)
         ax.set_yticklabels([])
 
         return figure
