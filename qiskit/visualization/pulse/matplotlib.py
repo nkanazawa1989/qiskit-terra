@@ -442,12 +442,16 @@ class ScheduleDrawer:
                     ax.annotate(s=u"\u25D8", xy=(time*dt, y0), xytext=(time*dt, y0+0.08),
                                 arrowprops={'arrowstyle': 'wedge'}, ha='center')
 
-    def _draw_framechanges(self, ax, fcs, dt, y0):
+    def _draw_framechanges(self, ax, fcs, dt, y0, draw_angle):
         framechanges_present = True
-        for time in fcs.keys():
+        for time, val in fcs.items():
             ax.text(x=time*dt, y=y0, s=r'$\circlearrowleft$',
                     fontsize=self.style.icon_font_size,
-                    ha='center', va='center')
+                    ha='center', va='center', color='g')
+            if draw_angle:
+                ax.text(x=time * dt, y=y0 + 0.15, s=r'%.2f' % val,
+                        fontsize=self.style.label_font_size,
+                        ha='center', va='bottom', color='g')
         return framechanges_present
 
     def _get_channel_color(self, channel):
@@ -480,11 +484,11 @@ class ScheduleDrawer:
             else:
                 name = cmd.name
 
-            ax.annotate(r'%s' % name,
-                        xy=((t0+tf)//2*dt, y0),
-                        xytext=((t0+tf)//2*dt, y0-0.07),
-                        fontsize=self.style.label_font_size,
-                        ha='center', va='center')
+            # ax.annotate(r'%s' % name,
+            #             xy=((t0+tf)//2*dt, y0),
+            #             xytext=((t0+tf)//2*dt, y0-0.07),
+            #             fontsize=self.style.label_font_size,
+            #             ha='center', va='center')
 
             linestyle = self.style.label_ch_linestyle
             alpha = self.style.label_ch_alpha
@@ -498,7 +502,7 @@ class ScheduleDrawer:
                            linestyle=linestyle, alpha=alpha)
 
     def _draw_channels(self, ax, output_channels, interp_method, t0, tf, dt, v_max,
-                       label=False, framechange=True):
+                       label=False, framechange=True, table=True):
         y0 = 0
         prev_labels = []
         for channel, events in output_channels.items():
@@ -533,12 +537,12 @@ class ScheduleDrawer:
                                 facecolor=color[1], alpha=0.3,
                                 edgecolor=color[1], linewidth=1.5,
                                 label='imaginary part')
-                ax.plot((t0-50, tf), (y0, y0), color='#000000', linewidth=1.0)
+                ax.plot((t0-100, tf), (y0, y0), color='#000000', linewidth=1.0)
 
                 # plot frame changes
                 fcs = events.framechanges
                 if fcs and framechange:
-                    self._draw_framechanges(ax, fcs, dt, y0)
+                    self._draw_framechanges(ax, fcs, dt, y0, not table)
                 # plot labels
                 labels = events.labels
                 if labels and label:
@@ -549,11 +553,11 @@ class ScheduleDrawer:
                 continue
 
             # plot label
-            ax.text(x=-100, y=y0, s=channel.name,
+            ax.text(x=-150, y=y0, s=channel.name,
                     fontsize=self.style.axis_font_size,
                     ha='right', va='center')
             # show scaling factor
-            ax.text(x=-100, y=y0 - 0.1, s='x%.2f' % (2 * _v_max),
+            ax.text(x=-150, y=y0 - 0.1, s='x%.2f' % (2 * _v_max),
                     fontsize=0.7*self.style.axis_font_size,
                     ha='right', va='top')
 
@@ -564,7 +568,7 @@ class ScheduleDrawer:
                 y0 -= 1
         return y0
 
-    def draw(self, schedule, dt, interp_method, plot_range,
+    def draw(self, schedule, ax, dt, interp_method, plot_range,
              scaling=None, channels_to_plot=None, plot_all=True,
              table=True, label=False, framechange=True,
              channels=None, show_framechange_channels=True):
@@ -590,7 +594,7 @@ class ScheduleDrawer:
         Raises:
             VisualizationError: when schedule cannot be drawn
         """
-        figure = plt.figure()
+#        figure = plt.figure()
 
         if not isinstance(scaling, dict):
             scale_dict = {chan: scaling for chan in schedule.channels}
@@ -631,23 +635,23 @@ class ScheduleDrawer:
                                                               channels=channels,
                                                               plot_all=plot_all)
 
-        if table:
-            ax = self._draw_table(figure, schedule_channels, dt, n_valid_waveform)
-
-        else:
-            ax = figure.add_subplot(111)
-            figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
+        # if table:
+        #     ax = self._draw_table(figure, schedule_channels, dt, n_valid_waveform)
+        #
+        # else:
+        #     ax = figure.add_subplot(111)
+        #     figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
 
         ax.set_facecolor(self.style.bg_color)
 
         y0 = self._draw_channels(ax, output_channels, interp_method,
                                  t0, tf, dt, v_max, label=label,
-                                 framechange=framechange)
+                                 framechange=framechange, table=table)
 
         self._draw_snapshots(ax, snapshot_channels, dt, y0)
 
-        ax.set_xlim(t0 * dt - 50, tf * dt)
-        ax.set_ylim(y0, 0.5)
+        ax.set_xlim(t0 * dt - 100, tf * dt)
+        ax.set_ylim(y0+0.3, 0.5)
         ax.set_yticklabels([])
 
-        return figure
+        return ax

@@ -27,7 +27,7 @@ if _matplotlib.HAS_MATPLOTLIB:
     from matplotlib import get_backend
 
 
-def pulse_drawer(data, dt=1, style=None, filename=None,
+def pulse_drawer(data, ax=None, dt=1, style=None, filename=None,
                  interp_method=None, scaling=None, channels_to_plot=None,
                  plot_all=False, plot_range=None, interactive=False,
                  table=True, label=False, framechange=True,
@@ -73,19 +73,19 @@ def pulse_drawer(data, dt=1, style=None, filename=None,
         image = drawer.draw(data, dt=dt, interp_method=interp_method, scaling=scaling)
     elif isinstance(data, (Schedule, Instruction)):
         drawer = _matplotlib.ScheduleDrawer(style=style)
-        image = drawer.draw(data, dt=dt, interp_method=interp_method, scaling=scaling,
+        image = drawer.draw(data, ax=ax, dt=dt, interp_method=interp_method, scaling=scaling,
                             plot_range=plot_range, plot_all=plot_all, table=table,
                             label=label, framechange=framechange, channels=channels,
                             show_framechange_channels=show_framechange_channels)
     else:
         raise VisualizationError('This data cannot be visualized.')
 
-    if filename:
-        image.savefig(filename, dpi=drawer.style.dpi, bbox_inches='tight')
-
-    if get_backend() in ['module://ipykernel.pylab.backend_inline',
-                         'nbAgg']:
-        _matplotlib.plt.close(image)
-    if image and interactive:
-        image.show()
+    # if filename:
+    #     image.savefig(filename, dpi=drawer.style.dpi, bbox_inches='tight')
+    #
+    # if get_backend() in ['module://ipykernel.pylab.backend_inline',
+    #                      'nbAgg']:
+    #     _matplotlib.plt.close(image)
+    # if image and interactive:
+    #     image.show()
     return image

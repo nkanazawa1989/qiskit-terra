@@ -358,7 +358,7 @@ class Schedule(ScheduleComponent):
         # return function returning true iff all filters are passed
         return lambda x: all([filter_func(x) for filter_func in filter_func_list])
 
-    def draw(self, dt: float = 1, style: Optional['SchedStyle'] = None,
+    def draw(self, ax, dt: float = 1, style: Optional['SchedStyle'] = None,
              filename: Optional[str] = None, interp_method: Optional[Callable] = None,
              scaling: Optional[Union[float, Dict[Channel, float]]] = None,
              channels_to_plot: Optional[List[Channel]] = None,
@@ -397,7 +397,7 @@ class Schedule(ScheduleComponent):
                           DeprecationWarning, 3)
             channels = channels_to_plot
 
-        return visualization.pulse_drawer(self, dt=dt, style=style,
+        return visualization.pulse_drawer(self, ax=ax, dt=dt, style=style,
                                           filename=filename, interp_method=interp_method,
                                           scaling=scaling, plot_all=plot_all,
                                           plot_range=plot_range, interactive=interactive,
