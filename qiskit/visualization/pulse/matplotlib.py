@@ -447,11 +447,11 @@ class ScheduleDrawer:
         for time, val in fcs.items():
             ax.text(x=time*dt, y=y0, s=r'$\circlearrowleft$',
                     fontsize=self.style.icon_font_size,
-                    ha='center', va='center', color='g')
+                    ha='center', va='center', color='k')
             if draw_angle:
-                ax.text(x=time * dt, y=y0 + 0.15, s=r'%.2f' % val,
+                ax.text(x=time * dt, y=y0 + 0.10, s=r'%.2f' % val,
                         fontsize=self.style.label_font_size,
-                        ha='center', va='bottom', color='g')
+                        ha='center', va='bottom', color='k')
         return framechanges_present
 
     def _get_channel_color(self, channel):
