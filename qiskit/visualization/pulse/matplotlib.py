@@ -561,6 +561,8 @@ class ScheduleDrawer:
                     fontsize=0.7*self.style.axis_font_size,
                     ha='right', va='top')
 
+            print('%s: %f' % (channel.name, y0))
+
             # change the y0 offset for removing spacing when a channel has negative values
             if self.style.remove_spacing:
                 y0 -= 0.5 + amp_min
