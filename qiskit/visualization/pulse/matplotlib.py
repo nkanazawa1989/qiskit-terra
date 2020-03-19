@@ -557,7 +557,7 @@ class ScheduleDrawer:
                     fontsize=self.style.axis_font_size,
                     ha='right', va='center')
             # show scaling factor
-            ax.text(x=-150, y=y0 - 0.1, s='x%.2f' % (2 * _v_max),
+            ax.text(x=-150, y=y0 - 0.1, s='x%.1f' % (2 * _v_max),
                     fontsize=0.7*self.style.axis_font_size,
                     ha='right', va='top')
 
