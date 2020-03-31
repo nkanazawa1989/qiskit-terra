@@ -50,7 +50,7 @@ def pulse_drawer(data: Union[SamplePulse, ScheduleComponent],
                  channels: List[Channel] = None,
                  scaling: float = None,
                  show_framechange_channels: bool = True,
-                 ax = None
+                 ax=None
                  ):
     """Plot the interpolated envelope of pulse and schedule.
 
