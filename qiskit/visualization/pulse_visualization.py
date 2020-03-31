@@ -49,7 +49,8 @@ def pulse_drawer(data: Union[SamplePulse, ScheduleComponent],
                  framechange: bool = True,
                  channels: List[Channel] = None,
                  scaling: float = None,
-                 show_framechange_channels: bool = True
+                 show_framechange_channels: bool = True,
+                 ax = None
                  ):
     """Plot the interpolated envelope of pulse and schedule.
 
@@ -80,6 +81,7 @@ def pulse_drawer(data: Union[SamplePulse, ScheduleComponent],
             All non-empty channels are shown if not provided.
         show_framechange_channels: When set `True` plot channels
             with only framechange instructions.
+        ax: axis object
 
     Returns:
         matplotlib.figure.Figure: A matplotlib figure object for the pulse envelope.
@@ -169,9 +171,13 @@ def pulse_drawer(data: Union[SamplePulse, ScheduleComponent],
                             channel_scales=channel_scales, plot_range=plot_range,
                             plot_all=plot_all, table=table, label=label,
                             framechange=framechange, channels=channels,
-                            show_framechange_channels=show_framechange_channels)
+                            show_framechange_channels=show_framechange_channels,
+                            ax=ax)
     else:
         raise VisualizationError('This data cannot be visualized.')
+
+    if ax is not None:
+        return ax
 
     if filename:
         image.savefig(filename, dpi=drawer.style.dpi, bbox_inches='tight')

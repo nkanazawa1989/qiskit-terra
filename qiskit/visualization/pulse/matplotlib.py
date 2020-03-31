@@ -744,7 +744,7 @@ class ScheduleDrawer:
              plot_all: bool = True, table: bool = True,
              label: bool = False, framechange: bool = True,
              scaling: float = None, channels: List[Channel] = None,
-             show_framechange_channels: bool = True):
+             show_framechange_channels: bool = True, ax = None):
         """Draw figure.
 
         Args:
@@ -769,6 +769,7 @@ class ScheduleDrawer:
                 All non-empty channels are shown if not provided.
             show_framechange_channels: When set `True` plot channels
                 with only framechange instructions.
+            ax: Axis object.
 
         Returns:
             matplotlib.figure.Figure: A matplotlib figure object for the pulse envelope.
@@ -822,12 +823,15 @@ class ScheduleDrawer:
                                           channels=channels,
                                           plot_all=plot_all)
 
-        if table:
-            ax = self._draw_table(figure, schedule_channels, dt)
+        if ax is None:
+            if table:
+                ax = self._draw_table(figure, schedule_channels, dt)
 
+            else:
+                ax = figure.add_subplot(111)
+                figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
         else:
-            ax = figure.add_subplot(111)
-            figure.set_size_inches(self.style.figsize[0], self.style.figsize[1])
+            ax = ax
 
         ax.set_facecolor(self.style.bg_color)
 
@@ -848,4 +852,7 @@ class ScheduleDrawer:
         ax.set_ylim(y_lb, y_ub)
         ax.set_yticklabels([])
 
-        return figure
+        if ax is not None:
+            return ax
+        else:
+            return figure
