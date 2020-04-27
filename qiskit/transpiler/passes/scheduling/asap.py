@@ -91,9 +91,7 @@ class ASAPSchedule(TransformationPass):
 
         for node in dag.topological_op_nodes():
             start_time = max(qubit_time_available[q] for q in node.qargs)
-            duration = 0
-            if node.op.duration is None:
-                duration = self.durations.get(node)
+            duration = self.durations.get(node)
 
             # padding idle time-slots with delays
             for q in node.qargs:

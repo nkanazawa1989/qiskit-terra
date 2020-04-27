@@ -75,13 +75,17 @@ def delay(self, duration, *qargs, unit=None):
     if isinstance(duration, float):
         if not unit:
             raise CircuitError('unit must be supplied for float duration.')
-        if unit == 'ns':
-            duration *= 1e-9
-        elif unit != 's':
-            raise CircuitError('Unknown unit is specified.')
     else:
         if not isinstance(duration, int):
             raise CircuitError('Invalid duration type.')
+
+    if unit:
+        if unit == 'ns':
+            duration *= 1e-9
+        elif unit == 's':
+            duration = float(duration)
+        else:
+            raise CircuitError('Unknown unit is specified.')
 
     return self.append(Delay(len(qubits), duration), qubits, [])
 

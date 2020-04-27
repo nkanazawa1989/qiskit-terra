@@ -27,18 +27,25 @@ qc.h(0)
 qc.measure(0, 0)
 print(qc.data)
 
-from qiskit import IBMQ
+# from qiskit import IBMQ
+# IBMQ.load_account()
+# provider = IBMQ.get_provider(hub='ibm-q-internal', group='deployed', project='default')
+# backend = provider.get_backend("ibmq_paris")
+from qiskit.test.mock.backends import FakeParis
+backend = FakeParis()
+
+from qiskit import transpile
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
-IBMQ.load_account()
-provider = IBMQ.get_provider(hub='ibm-q-internal', group='deployed', project='default')
-backend = provider.get_backend("ibmq_paris")
 
-bell = QuantumCircuit(2, name="bell")
-bell.h(0)
-bell.cx(0,1)
-print(bell.data)
-dag = circuit_to_dag(bell)
+bell2 = QuantumCircuit(2, name="bell2")
+bell2.h(0)
+bell2.delay(1000, 1, unit='ns')
+bell2.cx(0,1)
+print(bell2.data)
+transpiled = transpile(bell2, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay'])
+print(transpiled.data)
+dag = circuit_to_dag(transpiled)
 dag_with_delays = ASAPSchedule(backend).run(dag)
 scheduled_bell = dag_to_circuit(dag_with_delays)
 print(scheduled_bell.data)
