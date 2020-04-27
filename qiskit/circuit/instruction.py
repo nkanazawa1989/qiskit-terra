@@ -49,7 +49,7 @@ _CUTOFF_PRECISION = 1E-10
 class Instruction:
     """Generic quantum instruction."""
 
-    def __init__(self, name, num_qubits, num_clbits, params):
+    def __init__(self, name, num_qubits, num_clbits, params, duration=None):
         """Create a new instruction.
 
         Args:
@@ -58,6 +58,8 @@ class Instruction:
             num_clbits (int): instruction's clbit width
             params (list[int|float|complex|str|ndarray|list|ParameterExpression]):
                 list of parameters
+            duration (int|float): instruction's duration. Its type indicates its unit:
+                integer means unitless (dt of backend) and float means seconds.
 
         Raises:
             CircuitError: when the register is not in the correct format.
@@ -80,6 +82,7 @@ class Instruction:
         # empty definition means opaque or fundamental instruction
         self._definition = None
         self.params = params
+        self.duration = duration
 
     def __eq__(self, other):
         """Two instructions are the same if they have the same name,
@@ -365,3 +368,8 @@ class Instruction:
 
         instruction.definition = [(self, qargs[:], cargs[:])] * n
         return instruction
+
+    def __repr__(self):
+        # TODO: elaborate
+        return '%s(num_qubits=%s, duration=%a)' % \
+               (self.__class__.__name__, self.num_qubits, self.duration)
