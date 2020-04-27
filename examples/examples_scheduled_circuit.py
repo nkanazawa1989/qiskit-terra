@@ -13,19 +13,12 @@
 # that they have been altered from the originals.
 
 """
-T2 noise simulation with Aer example.
+Examples of scheduled circuit (QuantumCircuit with duration).
 """
 import pprint
 import numpy as np
 
-from qiskit import IBMQ
-from qiskit import assemble
 from qiskit import QuantumCircuit
-from qiskit.circuit.delay import Delay
-
-# IBMQ.load_account()
-# provider = IBMQ.providers()[-1]
-# backend = provider.get_backend("ibmq_cambridge")
 
 qc = QuantumCircuit(1, 1, name="t2_experiment")
 qc.h(0)
@@ -34,6 +27,25 @@ qc.h(0)
 qc.measure(0, 0)
 print(qc.data)
 
+from qiskit import IBMQ
+from qiskit.converters import circuit_to_dag, dag_to_circuit
+from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
+IBMQ.load_account()
+provider = IBMQ.get_provider(hub='ibm-q-internal', group='deployed', project='default')
+backend = provider.get_backend("ibmq_paris")
+
+bell = QuantumCircuit(2, name="bell")
+bell.h(0)
+bell.cx(0,1)
+print(bell.data)
+dag = circuit_to_dag(bell)
+dag_with_delays = ASAPSchedule(backend).run(dag)
+scheduled_bell = dag_to_circuit(dag_with_delays)
+print(scheduled_bell.data)
+
+
+# Q1: Output delay when qasm()? Will delay be included in QASM3?
+# Q2:
 
 # 1- Adding a Delay instruction for circuits
 # 2- Two scheduling passes for implementing ALAP and ASAP by inserting Delays on the DAGCircuit.
@@ -42,6 +54,7 @@ print(qc.data)
 # 3- A simple scheduled_circuit.draw() to visualize timed blocks on the qubits
 
 
+# from qiskit import assemble
 # qboj = assemble(sc, backend=backend, shots=1000)
 # print(qboj)
 

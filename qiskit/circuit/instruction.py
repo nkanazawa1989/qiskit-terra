@@ -125,6 +125,9 @@ class Instruction:
 
             return False
 
+        if self.duration != other.duration:
+            return False
+
         return True
 
     def _define(self):
