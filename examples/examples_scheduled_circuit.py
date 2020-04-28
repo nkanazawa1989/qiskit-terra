@@ -25,7 +25,7 @@ qc.h(0)
 qc.delay(100, 0, unit='ns')
 qc.h(0)
 qc.measure(0, 0)
-print(qc.data)
+print(qc.name, qc.data)
 
 # from qiskit import IBMQ
 # IBMQ.load_account()
@@ -37,18 +37,33 @@ backend = FakeParis()
 from qiskit import transpile
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
+from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
 
-bell2 = QuantumCircuit(2, name="bell2")
-bell2.h(0)
-bell2.delay(999, 1, unit='ns')
-bell2.cx(0,1)
-print(bell2.data)
-transpiled = transpile(bell2, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay'])
-print(transpiled.data)
+qc = QuantumCircuit(2, name="bell")
+qc.h(0)
+qc.delay(999, 1, unit='ns')
+qc.cx(0,1)
+print(qc.name, qc.data)
+transpiled = transpile(qc, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay'])
+# print(transpiled.data)
 dag = circuit_to_dag(transpiled)
 dag_with_delays = ASAPSchedule(backend).run(dag)
-scheduled_bell = dag_to_circuit(dag_with_delays)
-print(scheduled_bell.data)
+scheduled = dag_to_circuit(dag_with_delays)
+print(scheduled.name, scheduled.data)
+
+qc = QuantumCircuit(2, name="h2")
+qc.h(0)
+qc.x(1)
+print(qc.name, qc.data)
+dag = circuit_to_dag(transpile(qc, backend=backend, optimization_level=0))
+#ASAP
+dag_with_delays = ASAPSchedule(backend).run(dag)
+scheduled = dag_to_circuit(dag_with_delays)
+print(scheduled.name, scheduled.data)
+#ALAP
+dag_with_delays = ALAPSchedule(backend).run(dag)
+scheduled = dag_to_circuit(dag_with_delays)
+print(scheduled.name, scheduled.data)
 
 
 # Q1: Output delay when qasm()? Will delay be included in QASM3?
