@@ -40,7 +40,7 @@ from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
 
 bell2 = QuantumCircuit(2, name="bell2")
 bell2.h(0)
-bell2.delay(1000, 1, unit='ns')
+bell2.delay(999, 1, unit='ns')
 bell2.cx(0,1)
 print(bell2.data)
 transpiled = transpile(bell2, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay'])

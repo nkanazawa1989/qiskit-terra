@@ -13,7 +13,7 @@
 # that they have been altered from the originals.
 
 """ASAP Scheduling."""
-import math
+import warnings
 from collections import defaultdict
 from typing import List
 
@@ -43,8 +43,12 @@ class DurationMapper:
 
         # convert seconds (float) to dts (int)
         if isinstance(duration, float):
-            # TODO: warning if rounding error is not tiny
-            duration = int(math.ceil(duration / self.dt))
+            org = duration
+            duration = round(duration / self.dt)
+            if abs(org - duration * self.dt) > 1e-15:
+                warnings.warn("Duration of %s is rounded to %d dt = %e s from %e"
+                              % (node.op.name, duration, duration * self.dt, org),
+                              UserWarning)
 
         return duration
 
