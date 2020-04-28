@@ -50,12 +50,13 @@ dag = circuit_to_dag(transpiled)
 dag_with_delays = ASAPSchedule(backend).run(dag)
 scheduled = dag_to_circuit(dag_with_delays)
 print(scheduled.name, scheduled.data)
+print(scheduled)
 
 qc = QuantumCircuit(2, name="h2")
 qc.h(0)
 qc.x(1)
 print(qc.name, qc.data)
-dag = circuit_to_dag(transpile(qc, backend=backend, optimization_level=0))
+dag = circuit_to_dag(transpile(qc, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay']))
 #ASAP
 dag_with_delays = ASAPSchedule(backend).run(dag)
 scheduled = dag_to_circuit(dag_with_delays)
@@ -67,6 +68,7 @@ print(scheduled.name, scheduled.data)
 
 
 # Q1: Output delay when qasm()? Will delay be included in QASM3?
+#     (related to https://github.com/Qiskit/qiskit-terra/issues/4312)
 # Q2:
 
 # 1- Adding a Delay instruction for circuits

@@ -113,4 +113,5 @@ class ASAPSchedule(TransformationPass):
         pad_with_delays(working_qubits, until=circuit_duration)
 
         new_dag.name = dag.name + '_asap'
+        new_dag.duration = circuit_duration
         return new_dag
