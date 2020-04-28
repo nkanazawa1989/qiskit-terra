@@ -49,6 +49,7 @@ def dag_to_circuit(dag):
 
     name = dag.name or None
     circuit = QuantumCircuit(*dag.qregs.values(), *dag.cregs.values(), name=name)
+    circuit.duration = dag.duration
 
     for node in dag.topological_op_nodes():
         # Get arguments for classical control (if any)
