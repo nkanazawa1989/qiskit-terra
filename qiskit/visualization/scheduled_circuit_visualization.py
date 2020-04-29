@@ -37,7 +37,10 @@ def scheduled_circuit_drawer(circuit,
                              fold=None,
                              initial_state=False,
                              proportional=False):
-    """Copy from circuit_drawer"""
+    """Minimum implementation (text mode only)"""
+    if output is None:
+        output = 'text'
+
     if output == 'text':
         return _text_circuit_drawer(circuit, filename=filename,
                                     reverse_bits=reverse_bits,
@@ -58,6 +61,7 @@ def scheduled_circuit_drawer(circuit,
 # -----------------------------------------------------------------------------
 from shutil import get_terminal_size
 import sys
+from itertools import groupby
 from numpy import ndarray
 
 from qiskit.circuit import Gate, Instruction, Qubit, Clbit
@@ -104,16 +108,15 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
 
     # flatten nodes
     nodes = [n for nodes in layers for n in nodes]
-    print(nodes)
 
     if not plot_barriers:
         # exclude barriers from ops
         nodes = [n for n in nodes if not isinstance(n, BarrierInstruction)]
 
     text_drawing = TextDrawing(qregs, cregs, nodes,
-                                     layout=layout,
-                                     initial_state=initial_state,
-                                     proportional=proportional)
+                               layout=layout,
+                               initial_state=initial_state,
+                               proportional=proportional)
 
     text_drawing.line_length = fold
 
@@ -122,6 +125,7 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
     return text_drawing
 
 
+Interval = namedtuple('Interval', 'start stop')
 InstructionPosition = namedtuple('InstructionPosition', 'inst begin_pos end_pos')
 
 
@@ -136,8 +140,9 @@ class TextDrawing():
         self.layout = layout
         self.initial_state = initial_state
         self.line_length = line_length
-        positions = TextDrawing.compute_positions(instructions, proportional)  # Dict[Qubit, List[InstructionPosition]]
-        text_by_qubit = self.compute_text_by_qubit(positions)  # Dict[Qubit, str]
+        intervals = TextDrawing.compute_intervals(instructions)  # List[Interval]
+        time_to_pos = TextDrawing.compute_time_to_pos(instructions, intervals)  # Dict[int, int]
+        text_by_qubit = self.compute_text_by_qubit(instructions, intervals, time_to_pos)  # Dict[Qubit, str]
         self.without_fold = self.add_boundary(text_by_qubit, fuse_neighbor=False)  # List[str]
 
     def __str__(self):
@@ -201,35 +206,51 @@ class TextDrawing():
         return lines
 
     @staticmethod
-    def compute_positions(instructions, proportional):
-        if proportional:
-            raise VisualizationError("Not yet implemented.")
-
-        positions_by_qubit = defaultdict(list)
-        qubit_pos_available = defaultdict(int)
+    def compute_intervals(instructions):
+        intervals = []
+        qubit_time_available = defaultdict(int)
         for inst in instructions:
-            start_pos = max(qubit_pos_available[q] for q in inst.qargs)
-            length = TextDrawing.get_length(inst)
-            stop_pos = start_pos + length
+            start = max(qubit_time_available[q] for q in inst.qargs)
+            stop = start + inst.op.duration
             for q in inst.qargs:
-                positions_by_qubit[q].append(InstructionPosition(inst, start_pos, stop_pos))
-                qubit_pos_available[q] = stop_pos
+                intervals.append(Interval(start, stop))
+                qubit_time_available[q] = stop
 
-        return positions_by_qubit
+        return intervals
+
+    @staticmethod
+    def compute_time_to_pos(instructions, intervals):
+        time_to_pos = {0: 0}
+        ordered = sorted(zip(instructions, intervals), key=lambda x: x[1].stop)  # by stop time
+        qubit_pos_available = defaultdict(int)
+        # group by stop time
+        for time, group in groupby(ordered, key=lambda x: x[1].stop):
+            group_end_pos = 0
+            qubits = []
+            for inst, _ in group:
+                qubits.extend(inst.qargs)
+                begin_pos = max(qubit_pos_available[q] for q in inst.qargs)
+                length = TextDrawing.get_length(inst)
+                end_pos = begin_pos + length
+                group_end_pos = max(end_pos, group_end_pos)
+
+            for q in qubits:
+                qubit_pos_available[q] = max(qubit_pos_available[q], group_end_pos)
+
+            time_to_pos[time] = group_end_pos
+
+        return time_to_pos
 
     @staticmethod
     def get_length(inst):
         return len(TextDrawing.label_for_box(inst))
 
-    def compute_text_by_qubit(self, positions_by_qubit):
-        disp_qubits = [q for q in self.qubits if q in positions_by_qubit]
+    def compute_text_by_qubit(self, instructions, intervals, time_to_pos):
         lines_by_qubit = defaultdict(list)
-        for q in disp_qubits:
-            positions = positions_by_qubit[q]
-            for i, curr in enumerate(positions):
-                inst_str = TextDrawing.label_for_box(curr.inst)
-                if i > 0 and positions[i-1].end_pos < curr.begin_pos:
-                    inst_str = inst_str.rjust(curr.end_pos - positions[i-1].end_pos, ' ')
+        for inst, i in zip(instructions, intervals):
+            inst_str = TextDrawing.label_for_box(inst)
+            inst_str = inst_str.ljust(time_to_pos[i.stop] - time_to_pos[i.start], ' ')
+            for q in inst.qargs:
                 lines_by_qubit[q].append(inst_str)
 
         text_by_qubit = {k: "".join(v) for k, v in lines_by_qubit.items()}

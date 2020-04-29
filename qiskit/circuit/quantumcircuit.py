@@ -953,18 +953,18 @@ class QuantumCircuit:
             scale = output
             output = None
 
-        if self.duration:
+        if self.duration and output == 'text':
             from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
             return scheduled_circuit_drawer(self,
-                              filename=filename,
-                              output=output,
-                              plot_barriers=plot_barriers,
-                              reverse_bits=reverse_bits,
-                              justify=justify,
-                              idle_wires=idle_wires,
-                              with_layout=with_layout,
-                              fold=fold,
-                              initial_state=initial_state)
+                                            filename=filename,
+                                            output=output,
+                                            plot_barriers=plot_barriers,
+                                            reverse_bits=reverse_bits,
+                                            justify=justify,
+                                            idle_wires=idle_wires,
+                                            with_layout=with_layout,
+                                            fold=fold,
+                                            initial_state=initial_state)
 
         return circuit_drawer(self, scale=scale,
                               filename=filename, style=style,
