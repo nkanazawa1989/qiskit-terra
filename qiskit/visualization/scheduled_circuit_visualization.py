@@ -223,6 +223,7 @@ class TextDrawing():
     def get_time_to_pos(instructions, intervals):
         time_to_pos = {0: 0}
         ordered = sorted(zip(instructions, intervals), key=lambda x: x[1].stop)  # by stop time
+        prev_time = 0
         qubit_pos_available = defaultdict(int)
         # group by stop time
         for time, group in groupby(ordered, key=lambda x: x[1].stop):
@@ -234,12 +235,16 @@ class TextDrawing():
                 length = TextDrawing.get_length(inst)
                 end_pos = begin_pos + length
                 group_end_pos = max(end_pos, group_end_pos)
-                print(inst.op.name, end_pos, group_end_pos)
+                # print(inst.op.name, end_pos, group_end_pos)
+
+            if time_to_pos[prev_time] >= group_end_pos:
+                group_end_pos = time_to_pos[prev_time] + 2
 
             for q in qubits:
                 qubit_pos_available[q] = max(qubit_pos_available[q], group_end_pos)
 
             time_to_pos[time] = group_end_pos
+            prev_time = time
 
         return time_to_pos
 
