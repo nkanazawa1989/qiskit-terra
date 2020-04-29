@@ -126,7 +126,6 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
 
 
 Interval = namedtuple('Interval', 'start stop')
-InstructionPosition = namedtuple('InstructionPosition', 'inst begin_pos end_pos')
 
 
 class TextDrawing():
@@ -140,10 +139,10 @@ class TextDrawing():
         self.layout = layout
         self.initial_state = initial_state
         self.line_length = line_length
-        intervals = TextDrawing.compute_intervals(instructions)  # List[Interval]
-        time_to_pos = TextDrawing.compute_time_to_pos(instructions, intervals)  # Dict[int, int]
-        text_by_qubit = self.compute_text_by_qubit(instructions, intervals, time_to_pos)  # Dict[Qubit, str]
-        self.without_fold = self.add_boundary(text_by_qubit, fuse_neighbor=False)  # List[str]
+        intervals = TextDrawing.get_intervals(instructions)  # List[Interval]
+        time_to_pos = TextDrawing.get_time_to_pos(instructions, intervals)  # Dict[int, int]
+        text_by_qubit = TextDrawing.get_text_by_qubit(instructions, intervals, time_to_pos)  # Dict[Qubit, str]
+        self.no_fold = self.add_boundary(text_by_qubit, fuse_neighbor=False)  # List[str]
 
     def __str__(self):
         return self.single_string()
@@ -191,22 +190,22 @@ class TextDrawing():
                 line_length, _ = get_terminal_size()
 
         lines = []
-        width = len(self.without_fold)
-        total_length = len(self.without_fold[0])
+        width = len(self.no_fold)
+        total_length = len(self.no_fold[0])
         n_folds = total_length // line_length
         for i in range(n_folds):
             pos_begin = i * line_length
             pos_end = (i+1) * line_length
             for j in range(width):
-                lines.append(self.without_fold[j][pos_begin:pos_end])
+                lines.append(self.no_fold[j][pos_begin:pos_end])
 
         for j in range(width):
-            lines.append(self.without_fold[j][n_folds*line_length:] + "|")
+            lines.append(self.no_fold[j][n_folds * line_length:] + "|")
 
         return lines
 
     @staticmethod
-    def compute_intervals(instructions):
+    def get_intervals(instructions):
         intervals = []
         qubit_time_available = defaultdict(int)
         for inst in instructions:
@@ -219,7 +218,7 @@ class TextDrawing():
         return intervals
 
     @staticmethod
-    def compute_time_to_pos(instructions, intervals):
+    def get_time_to_pos(instructions, intervals):
         time_to_pos = {0: 0}
         ordered = sorted(zip(instructions, intervals), key=lambda x: x[1].stop)  # by stop time
         qubit_pos_available = defaultdict(int)
@@ -245,7 +244,8 @@ class TextDrawing():
     def get_length(inst):
         return len(TextDrawing.label_for_box(inst))
 
-    def compute_text_by_qubit(self, instructions, intervals, time_to_pos):
+    @staticmethod
+    def get_text_by_qubit(instructions, intervals, time_to_pos):
         lines_by_qubit = defaultdict(list)
         for inst, i in zip(instructions, intervals):
             inst_str = TextDrawing.label_for_box(inst)
