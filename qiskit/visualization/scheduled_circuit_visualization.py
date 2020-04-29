@@ -140,7 +140,9 @@ class TextDrawing():
         self.initial_state = initial_state
         self.line_length = line_length
         intervals = TextDrawing.get_intervals(instructions)  # List[Interval]
+        # print(intervals)
         time_to_pos = TextDrawing.get_time_to_pos(instructions, intervals)  # Dict[int, int]
+        # print(time_to_pos)
         text_by_qubit = TextDrawing.get_text_by_qubit(instructions, intervals, time_to_pos)  # Dict[Qubit, str]
         self.no_fold = self.add_boundary(text_by_qubit, fuse_neighbor=False)  # List[str]
 
@@ -211,8 +213,8 @@ class TextDrawing():
         for inst in instructions:
             start = max(qubit_time_available[q] for q in inst.qargs)
             stop = start + inst.op.duration
+            intervals.append(Interval(start, stop))
             for q in inst.qargs:
-                intervals.append(Interval(start, stop))
                 qubit_time_available[q] = stop
 
         return intervals
@@ -232,6 +234,7 @@ class TextDrawing():
                 length = TextDrawing.get_length(inst)
                 end_pos = begin_pos + length
                 group_end_pos = max(end_pos, group_end_pos)
+                print(inst.op.name, end_pos, group_end_pos)
 
             for q in qubits:
                 qubit_pos_available[q] = max(qubit_pos_available[q], group_end_pos)
@@ -242,14 +245,15 @@ class TextDrawing():
 
     @staticmethod
     def get_length(inst):
-        return len(TextDrawing.label_for_box(inst))
+        return len(TextDrawing.label_for_box(inst)) + 1  # +1 for separator "|"
 
     @staticmethod
     def get_text_by_qubit(instructions, intervals, time_to_pos):
         lines_by_qubit = defaultdict(list)
         for inst, i in zip(instructions, intervals):
             inst_str = TextDrawing.label_for_box(inst)
-            inst_str = inst_str.ljust(time_to_pos[i.stop] - time_to_pos[i.start], ' ')
+            inst_str = inst_str.center(time_to_pos[i.stop] - time_to_pos[i.start] - 1, ' ')
+            inst_str = '|' + inst_str
             for q in inst.qargs:
                 lines_by_qubit[q].append(inst_str)
 
@@ -267,6 +271,8 @@ class TextDrawing():
         lengths = [len(val) for val in text_by_qubit.values()]
         if not all_same(lengths):
             print(lengths)
+            import pprint
+            pprint.pprint(text_by_qubit)
             raise VisualizationError("Invalid text_by_qubit")
 
         total_length = lengths[0]
@@ -372,5 +378,5 @@ class TextDrawing():
         if params:
             label += "(%s)" % ','.join(params)
 
-        label = "| {}[{}] ".format(label, instruction.op.duration)
+        label = " {}[{}] ".format(label, instruction.op.duration)
         return label

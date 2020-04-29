@@ -113,3 +113,11 @@ class QuantumCircuitData(MutableSequence):
     def copy(self):
         """Returns a shallow copy of instruction list."""
         return self._circuit._data.copy()
+
+    def __str__(self):
+        res = []
+        for inst, qargs, _ in self._circuit._data:
+            qubits = ",".join([str(q.index) for q in qargs])
+            res.append(f"{inst.name}({qubits})[{inst.duration}]")
+        return "\n".join(res)
+
