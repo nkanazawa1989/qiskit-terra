@@ -18,6 +18,7 @@ from collections import defaultdict
 from typing import List
 
 from qiskit.circuit.delay import Delay
+from qiskit.circuit.measure import Measure
 from qiskit.extensions.standard import Barrier
 from qiskit.dagcircuit import DAGCircuit, DAGNode
 from qiskit.transpiler.basepasses import TransformationPass
@@ -31,6 +32,8 @@ class DurationMapper:
             raise TranspilerError("DurationMapper needs backend.configuration().dt")
         self.dt = backend.configuration().dt
         self.backend_prop = backend.properties()
+        self.all_qubits = tuple([i for i in range(backend.configuration().num_qubits)])
+        self.inst_map = backend.defaults().instruction_schedule_map
 
     def get(self, node: DAGNode):
         duration = node.op.duration
@@ -39,13 +42,17 @@ class DurationMapper:
                 duration = 0
             else:  # consult backend properties
                 qubits = [q.index for q in node.qargs]
-                duration = self.backend_prop.gate_length(node.op.name, qubits)
+                if isinstance(node.op, Measure):
+                    duration = self.inst_map.get(node.op.name, self.all_qubits).duration
+                else:
+                    duration = self.backend_prop.gate_length(node.op.name, qubits)
 
         # convert seconds (float) to dts (int)
         if isinstance(duration, float):
             org = duration
             duration = round(duration / self.dt)
-            if abs(org - duration * self.dt) > 1e-15:
+            rounding_error = abs(org - duration * self.dt)
+            if rounding_error > 1e-15:
                 warnings.warn("Duration of %s is rounded to %d dt = %e s from %e"
                               % (node.op.name, duration, duration * self.dt, org),
                               UserWarning)
