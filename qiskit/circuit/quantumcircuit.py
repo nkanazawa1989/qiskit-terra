@@ -748,6 +748,20 @@ class QuantumCircuit:
         else:
             return string_temp
 
+    def schedule(self, backend):
+        from qiskit import transpile
+        from qiskit.converters import circuit_to_dag, dag_to_circuit
+        from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
+        basis_gates = backend.configuration().basis_gates + ['delay']
+        transpiled = transpile(self,
+                               backend=backend,
+                               optimization_level=0,
+                               basis_gates=basis_gates)
+        dag = circuit_to_dag(transpiled)
+        dag_with_delays = ALAPSchedule(backend).run(dag)
+        scheduled = dag_to_circuit(dag_with_delays)
+        return scheduled
+
     def draw(self, output=None, scale=0.7, filename=None, style=None,
              interactive=False, line_length=None, plot_barriers=True,
              reverse_bits=False, justify=None, vertical_compression='medium', idle_wires=True,
