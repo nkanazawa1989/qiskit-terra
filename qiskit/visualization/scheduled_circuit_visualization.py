@@ -534,5 +534,9 @@ class TextDrawing():
         if params:
             label += "(%s)" % ','.join(params)
 
+        if len(instruction.qargs) == 2:
+            qubits = ",".join([str(q.index) for q in instruction.qargs])
+            label += "({})".format(qubits)
+
         label = " {}[{}] ".format(label, instruction.op.duration)
         return label
