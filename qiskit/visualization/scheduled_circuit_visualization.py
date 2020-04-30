@@ -20,6 +20,7 @@ Only support Ascii art mode.
 
 import logging
 from collections import defaultdict, namedtuple
+from typing import Optional, List, Dict, Iterable
 
 from qiskit.visualization import exceptions
 from qiskit.visualization import utils
@@ -68,6 +69,7 @@ from qiskit.circuit import Gate, Instruction, Qubit, Clbit
 from qiskit.extensions import IGate, UnitaryGate, HamiltonianGate
 from qiskit.extensions import Barrier as BarrierInstruction
 from qiskit.extensions.quantum_initializer.initializer import Initialize
+from qiskit.dagcircuit import DAGNode
 from .tools.pi_check import pi_check
 from .exceptions import VisualizationError
 
@@ -125,7 +127,47 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
     return text_drawing
 
 
-Interval = namedtuple('Interval', 'start stop')
+Instruction = namedtuple('Interval', 'start stop')
+TimedInstruction = namedtuple('TimedInstruction', 'op qargs start stop node')
+
+
+class TextBlock:
+    splitter = '|'
+
+    def __init__(self,
+                 label: str,
+                 length: int,
+                 qubit: Qubit,
+                 node: Optional[DAGNode] = None,
+                 fillchar: Optional[str] = None):
+        # if length < len(label) + len(TextBlock.splitter):
+        #     raise VisualizationError("length must be larger than len(label)")
+        if fillchar and len(fillchar) != 1:
+            raise VisualizationError("length of fillchar must be one")
+
+        self.label = label
+        self.length = length
+        self.qubit = qubit
+        self.node = node
+        self.fillchar = fillchar or ' '
+
+    @property
+    def _width(self):
+        return self.length - len(TextBlock.splitter)
+
+    @classmethod
+    def empty(cls, length: int, qubit: Qubit):
+        return TextBlock(label="",
+                         length=length,
+                         qubit=qubit,
+                         fillchar='*')
+
+    def __str__(self):
+        return f"{TextBlock.splitter}{self.label.center(self._width, self.fillchar)}"
+
+    def __repr__(self):
+        # TODO: elaorate
+        return str(self) + f"({self.length})"
 
 
 class TextDrawing():
@@ -133,18 +175,24 @@ class TextDrawing():
 
     def __init__(self, qregs, cregs, instructions,
                  line_length=None, layout=None, initial_state=True,
-                 proportional=False, fuse_neighbor=True):
+                 proportional=False):
         self.qubits = qregs
         self.clbits = cregs
         self.layout = layout
         self.initial_state = initial_state
         self.line_length = line_length
-        intervals = TextDrawing.get_intervals(instructions)  # List[Interval]
-        # print(intervals)
-        time_to_pos = TextDrawing.get_time_to_pos(instructions, intervals)  # Dict[int, int]
+        instructions = TextDrawing.get_timed_instructions(instructions)  # List[TimedInstruction]
+        # print(instructions)
+        zeros, positives = TextDrawing.split_instructions(instructions)
+        time_to_pos = TextDrawing.get_time_to_pos(positives)  # Dict[int, int]
         # print(time_to_pos)
-        text_by_qubit = TextDrawing.get_text_by_qubit(instructions, intervals, time_to_pos)  # Dict[Qubit, str]
-        self.no_fold = self.add_boundary(text_by_qubit, fuse_neighbor=False)  # List[str]
+        blocks_by_qubit = TextDrawing.get_blocks_by_qubit(instructions, time_to_pos)  # Dict[Qubit, List[TextBlock]]
+        # print(blocks_by_qubit)
+        blocks_by_qubit = TextDrawing.resolve_zero_length(blocks_by_qubit, zeros)  # Dict[Qubit, List[TextBlock]]
+        # print(blocks_by_qubit)
+        text_by_qubit = TextDrawing.to_text(blocks_by_qubit)
+        # print(text_by_qubit)
+        self.no_fold = self.add_boundary(text_by_qubit)  # List[str]
 
     def __str__(self):
         return self.single_string()
@@ -207,33 +255,43 @@ class TextDrawing():
         return lines
 
     @staticmethod
-    def get_intervals(instructions):
-        intervals = []
+    def get_timed_instructions(instructions: List[DAGNode]):
+        res = []
         qubit_time_available = defaultdict(int)
         for inst in instructions:
             start = max(qubit_time_available[q] for q in inst.qargs)
             stop = start + inst.op.duration
-            intervals.append(Interval(start, stop))
+            res.append(TimedInstruction(op=inst.op,
+                                        qargs=inst.qargs,
+                                        start=start,
+                                        stop=stop,
+                                        node=inst))
             for q in inst.qargs:
                 qubit_time_available[q] = stop
 
-        return intervals
+        return res
 
     @staticmethod
-    def get_time_to_pos(instructions, intervals):
+    def split_instructions(instructions: Iterable[TimedInstruction]):
+        zeros = [i for i in instructions if i.op.duration == 0]
+        positives = [i for i in instructions if i.op.duration > 0]
+        assert(len(zeros) + len(positives) == len(instructions))
+        return zeros, positives
+
+    @staticmethod
+    def get_time_to_pos(instructions: List[TimedInstruction]) -> Dict[int, int]:
         time_to_pos = {0: 0}
-        ordered = sorted(zip(instructions, intervals), key=lambda x: x[1].stop)  # by stop time
+        ordered = sorted(instructions, key=lambda x: x.stop)  # by stop time
         prev_time = 0
         qubit_pos_available = defaultdict(int)
         # group by stop time
-        for time, group in groupby(ordered, key=lambda x: x[1].stop):
+        for time, group in groupby(ordered, key=lambda x: x.stop):
             group_end_pos = 0
             qubits = []
-            for inst, _ in group:
-                qubits.extend(inst.qargs)
-                begin_pos = max(qubit_pos_available[q] for q in inst.qargs)
-                length = TextDrawing.get_length(inst)
-                end_pos = begin_pos + length
+            for i in group:
+                qubits.extend(i.qargs)
+                begin_pos = max(qubit_pos_available[q] for q in i.qargs)
+                end_pos = begin_pos + TextDrawing.get_min_length(i.node)
                 group_end_pos = max(end_pos, group_end_pos)
                 # print(inst.op.name, end_pos, group_end_pos)
 
@@ -241,7 +299,8 @@ class TextDrawing():
                 group_end_pos = time_to_pos[prev_time] + 2
 
             for q in qubits:
-                qubit_pos_available[q] = max(qubit_pos_available[q], group_end_pos)
+                qubit_pos_available[q] = group_end_pos
+                # qubit_pos_available[q] = max(qubit_pos_available[q], group_end_pos)
 
             time_to_pos[time] = group_end_pos
             prev_time = time
@@ -249,26 +308,118 @@ class TextDrawing():
         return time_to_pos
 
     @staticmethod
-    def get_length(inst):
+    def get_min_length(inst: DAGNode):
         return len(TextDrawing.label_for_box(inst)) + 1  # +1 for separator "|"
 
     @staticmethod
-    def get_text_by_qubit(instructions, intervals, time_to_pos):
-        lines_by_qubit = defaultdict(list)
-        for inst, i in zip(instructions, intervals):
-            inst_str = TextDrawing.label_for_box(inst)
-            inst_str = inst_str.center(time_to_pos[i.stop] - time_to_pos[i.start] - 1, ' ')
-            inst_str = '|' + inst_str
-            for q in inst.qargs:
-                lines_by_qubit[q].append(inst_str)
+    def get_blocks_by_qubit(instructions: List[TimedInstruction],
+                            time_to_pos: Dict[int, int]) -> Dict[Qubit, List[TextBlock]]:
+        blocks_by_qubit = defaultdict(list)
+        for i in instructions:
+            for q in i.qargs:
+                block = TextBlock(label=TextDrawing.label_for_box(i.node),
+                                  length=time_to_pos[i.stop] - time_to_pos[i.start],
+                                  qubit=q,
+                                  node=i.node)
+                blocks_by_qubit[q].append(block)
 
-        text_by_qubit = {k: "".join(v) for k, v in lines_by_qubit.items()}
-        return text_by_qubit
+        return blocks_by_qubit
 
-    def add_boundary(self, text_by_qubit, fuse_neighbor=True):
-        if fuse_neighbor:
-            raise VisualizationError("Not yet implemented.")
 
+    @staticmethod
+    def resolve_zero_length(blocks_by_qubit: Dict[Qubit, List[TextBlock]],
+                            zero_instructions: List[TimedInstruction]) -> Dict[Qubit, List[TextBlock]]:
+        news = defaultdict(list)
+        blocks_by_begin = defaultdict(list)
+        blocks_by_end = defaultdict(list)
+        blocks_by_end[0] = []
+        for q in blocks_by_qubit:
+            pos = 0
+            for b in blocks_by_qubit[q]:
+                blocks_by_begin[pos].append(b)
+                pos += b.length
+                blocks_by_end[pos].append(b)
+
+        actives = set()
+        positions = sorted([pos for pos in blocks_by_end])
+        for pos in positions:
+            actives.update(blocks_by_begin[pos])
+            blocks = blocks_by_end[pos]
+            if not blocks:
+                continue
+
+            # 1. positives -> schedule first
+            # 2. zeros -> schedule layer by layer
+            # 3. positives -> pad with empty total_zero_length if its qubit ends with positive one
+            # 4. actives -> stretch length by total_zero_length
+            positives = [b for b in blocks if b.length > 0]
+            zeros = [b for b in blocks if b.length == 0]
+            actives -= set(blocks)
+
+            # 1. positives -> schedule first
+            for b in positives:
+                news[b.qubit].append(b)
+
+            if not zeros:
+                continue
+
+            # 2. zeros -> schedule layer by layer
+            zero_qubits = set([b.qubit for b in zeros])
+            for b in zeros:
+                b.length = TextDrawing.get_min_length(b.node)
+
+            # decompose zeros into layers
+            node_to_blocks = defaultdict(list)  # for barrier
+            for b in zeros:
+                node_to_blocks[b.node].append(b)
+            layers = []  # layers on blocks
+            wire = defaultdict(int)
+            all_zero_nodes = [n.node for n in zero_instructions]
+            zero_nodes = [n for n in node_to_blocks]
+            zero_nodes.sort(key=lambda x: all_zero_nodes.index(x))
+            for n in zero_nodes:  # must be sorted in the original order when scheduling
+                qubits = n.qargs
+                i = 1 + max(wire[q] for q in qubits)
+                for q in qubits:
+                    wire[q] = i
+                if len(layers) > i:
+                    layers[i].extend(node_to_blocks[n])
+                else:
+                    layers.append(node_to_blocks[n])
+
+            total_zero_length = 0
+            for layer in layers:
+                layer_length = max(b.length for b in layer)
+                for b in layer:
+                    news[b.qubit].append(b)
+                    if b.length < layer_length:
+                        news[b.qubit].append(TextBlock.empty(length=layer_length - b.length,
+                                                             qubit=b.qubit))
+
+                residuals = zero_qubits - set([b.qubit for b in layer])
+                for q in residuals:
+                    news[q].append(TextBlock.empty(length=layer_length, qubit=q))
+
+                total_zero_length += layer_length
+
+            # 3. positives -> pad with empty total_zero_length if its qubit ends with positive one
+            for b in positives:
+                if b.qubit not in zero_qubits:
+                    empty = TextBlock.empty(length=total_zero_length, qubit=b.qubit)
+                    news[b.qubit].append(empty)
+
+            # 4. actives (not on zero_qubits) -> stretch length by total_zero_length
+            for b in actives:
+                if b.qubit not in zero_qubits:
+                    b.length += total_zero_length
+
+        return news
+
+    @staticmethod
+    def to_text(blocks_by_qubit: Dict[Qubit, List[TextBlock]]) -> Dict[Qubit, str]:
+        return {q: "".join([str(b) for b in blocks]) for q, blocks in blocks_by_qubit.items()}
+
+    def add_boundary(self, text_by_qubit: Dict[Qubit, str]):
         def all_same(es):
             return all([e == es[0] for e in es[1:]]) if es else False
 
