@@ -39,18 +39,18 @@ from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
 from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
 
-# qc = QuantumCircuit(2, name="bell")
-# qc.h(0)
-# qc.delay(999, 1, unit='ns')
-# qc.cx(0,1)
-# print(qc.name, qc.data)
-# transpiled = transpile(qc, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay'])
-# # print(transpiled.data)
-# dag = circuit_to_dag(transpiled)
-# dag_with_delays = ASAPSchedule(backend).run(dag)
-# scheduled = dag_to_circuit(dag_with_delays)
-# print(scheduled.name, scheduled.data)
-# print(scheduled)
+qc = QuantumCircuit(2, name="bell")
+qc.h(0)
+qc.delay(999, 1, unit='ns')
+qc.cx(0,1)
+print(qc.name, qc.data)
+transpiled = transpile(qc, backend=backend, optimization_level=0, basis_gates=['u1', 'u2', 'u3', 'cx', 'delay'])
+# print(transpiled.data)
+dag = circuit_to_dag(transpiled)
+dag_with_delays = ASAPSchedule(backend).run(dag)
+scheduled = dag_to_circuit(dag_with_delays)
+print(scheduled.name, scheduled.data)
+print(scheduled)
 #
 # qc = QuantumCircuit(2, name="h2")
 # qc.h(0)
@@ -78,9 +78,7 @@ transpiled = transpile(qc, backend=backend, optimization_level=0, basis_gates=['
 dag = circuit_to_dag(transpiled)
 dag_with_delays = TimestepsASAPSchedule(backend).run(dag)
 scheduled = dag_to_circuit(dag_with_delays)
-print(scheduled.name, scheduled.data)
 print(scheduled.draw(qubits=[0, 1]))
-# print(scheduled.draw(idle_wires=False))
 
 # from qiskit import assemble
 # qboj = assemble(transpiled, backend=backend, shots=1000)

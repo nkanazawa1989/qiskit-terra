@@ -439,9 +439,8 @@ class TextDrawing:
         wire_names = {q: name.rjust(max_name_length, ' ') for q, name in wire_names.items()}
         total_length += max_name_length
         boundary_text = "{}|".format(' ' * max_name_length).ljust(total_length, '-')
-        res = []
+        res = [boundary_text]
         for q in disp_qubits:
-            res.append(boundary_text)
             res.append(wire_names[q] + text_by_qubit[q])
         res.append(boundary_text)
         return res
