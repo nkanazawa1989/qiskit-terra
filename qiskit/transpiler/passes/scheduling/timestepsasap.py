@@ -68,11 +68,12 @@ class TimestepsASAPSchedule(TransformationPass):
             #     n.op.params = [duration]
 
         frontier = residual_dag.leading_op_nodes()
-        print([(n.op.name, [q.index for q in n.qargs[:2]]) for n in frontier])
         max_n_iteration = dag.size() * dag.num_qubits()
         for k in range(1, max_n_iteration + 1):  # escape infinite loop
             if not frontier:
                 break
+
+            # print([(n.op.name, [q.index for q in n.qargs[:2]]) for n in frontier])
 
             # find most-dominant (non-delay) node (if all are delays, return least-dominant)
             no_delays = [n for n in frontier if not isinstance(n.op, Delay)]
