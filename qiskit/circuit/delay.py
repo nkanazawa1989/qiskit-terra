@@ -25,7 +25,7 @@ class Delay(Instruction):
 
     def __init__(self, num_qubits, duration):
         """Create new measurement instruction."""
-        super().__init__("delay", num_qubits, 1, [], duration=duration)
+        super().__init__("delay", num_qubits, 0, params=[duration], duration=duration)
 
     def inverse(self):
         """Special case. Return self."""
@@ -87,7 +87,7 @@ def delay(self, duration, *qargs, unit=None):
         else:
             raise CircuitError('Unknown unit is specified.')
 
-    return self.append(Delay(len(qubits), duration), qubits, [])
+    return self.append(Delay(len(qubits), duration), qubits)
 
 
 QuantumCircuit.delay = delay
