@@ -27,7 +27,7 @@ from qiskit.transpiler.exceptions import TranspilerError
 
 class DurationMapper:
     def __init__(self, backend):
-        # TODO: elaborate with updated backend.properties()
+        # TODO: backend.properties() should let us know all about instruction durations
         if not backend.configuration().open_pulse:
             raise TranspilerError("DurationMapper needs backend.configuration().dt")
         self.dt = backend.configuration().dt
@@ -51,6 +51,8 @@ class DurationMapper:
         if isinstance(duration, float):
             org = duration
             duration = round(duration / self.dt)
+            if isinstance(node.op, Delay):  # overwrite params! (tricky but necessary)
+                node.op.params = [duration]
             rounding_error = abs(org - duration * self.dt)
             if rounding_error > 1e-15:
                 warnings.warn("Duration of %s is rounded to %d dt = %e s from %e"

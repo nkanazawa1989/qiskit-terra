@@ -967,7 +967,7 @@ class QuantumCircuit:
             scale = output
             output = None
 
-        if self.duration and output == 'text':
+        if self.duration and (output in [None, 'text']):
             from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
             return scheduled_circuit_drawer(self,
                                             filename=filename,
