@@ -118,6 +118,7 @@ class QuantumCircuitData(MutableSequence):
         res = []
         for inst, qargs, _ in self._circuit._data:
             qubits = ",".join([str(q.index) for q in qargs])
-            res.append(f"{inst.name}({qubits})[{inst.duration}]")
+            params = ",".join([str(p) for p in inst.params])
+            res.append(f"{inst.name}({qubits})({params})[{inst.duration}]")
         return "\n".join(res)
 

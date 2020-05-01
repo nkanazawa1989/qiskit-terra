@@ -100,9 +100,9 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
         TextDrawing: An instances that, when printed, draws the circuit in ascii art.
     """
     qregs, cregs, layers = utils._get_layered_instructions(circuit,
-                                                        reverse_bits=reverse_bits,
-                                                        justify=justify,
-                                                        idle_wires=idle_wires)
+                                                           reverse_bits=reverse_bits,
+                                                           justify=justify,
+                                                           idle_wires=idle_wires)
     if with_layout:
         layout = circuit._layout
     else:
@@ -127,7 +127,6 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
     return text_drawing
 
 
-Instruction = namedtuple('Interval', 'start stop')
 TimedInstruction = namedtuple('TimedInstruction', 'op qargs start stop node')
 
 
@@ -170,7 +169,7 @@ class TextBlock:
         return str(self) + f"({self.length})"
 
 
-class TextDrawing():
+class TextDrawing:
     """ The text drawing"""
 
     def __init__(self, qregs, cregs, instructions,
@@ -426,12 +425,13 @@ class TextDrawing():
         # check validity
         lengths = [len(val) for val in text_by_qubit.values()]
         if not all_same(lengths):
-            print(lengths)
-            import pprint
-            pprint.pprint(text_by_qubit)
-            raise VisualizationError("Invalid text_by_qubit")
+            # TODO: use logger instead of print
+            print("FIXME:", lengths)
+            # import pprint
+            # pprint.pprint(text_by_qubit)
+            # raise VisualizationError("Invalid text_by_qubit")
 
-        total_length = lengths[0]
+        total_length = max(lengths)
         disp_qubits = [q for q in self.qubits if q in text_by_qubit]
         wire_names = {q: self.wire_name(q) for q in disp_qubits}
         max_name_length = max(len(name) for name in wire_names.values())

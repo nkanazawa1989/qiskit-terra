@@ -21,15 +21,15 @@ from qiskit.circuit.exceptions import CircuitError
 
 
 class Delay(Instruction):
-    """Quantum measurement in the computational basis."""
+    """Do nothing and just delay/wait/idle for a specified duration."""
 
     def __init__(self, num_qubits, duration):
-        """Create new measurement instruction."""
+        """Create new delay instruction."""
         super().__init__("delay", num_qubits, 0, params=[duration], duration=duration)
 
     def inverse(self):
         """Special case. Return self."""
-        return Delay(self.num_qubits, self.duration)
+        return self
 
     def broadcast_arguments(self, qargs, cargs):
         yield [qarg for sublist in qargs for qarg in sublist], []
