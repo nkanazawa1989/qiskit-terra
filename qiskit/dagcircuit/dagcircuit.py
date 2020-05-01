@@ -1328,6 +1328,28 @@ class DAGCircuit:
                     more_nodes = True
                     break
 
+    def leading_op_nodes(self):
+        """
+        Iterator for nodes that have no in-edges from op nodes, i.e. leading op nodes.
+
+        Returns:
+             DAGNode: the set of the leading op nodes
+        """
+        leaders = set()
+        for q in self.qubits():
+            wire = self.input_map.get(q)
+            node = next(self.successors(wire))
+            if node.type == 'out':
+                continue
+            lead = True
+            for n in self.predecessors(node):
+                if n.type == 'op':
+                    lead = False
+                    break
+            if lead:
+                leaders.add(node)
+        return leaders
+
     def count_ops(self):
         """Count the occurrences of operation names.
 
