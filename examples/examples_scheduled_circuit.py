@@ -66,19 +66,9 @@ dag_with_delays = ALAPSchedule(backend).run(dag)
 scheduled = dag_to_circuit(dag_with_delays)
 print(scheduled.name, scheduled.data)
 
-
-# Q1: Output delay when qasm()? Will delay be included in QASM3?
-#     (related to https://github.com/Qiskit/qiskit-terra/issues/4312)
-# Q2:
-
-# 1- Adding a Delay instruction for circuits
-# 2- Two scheduling passes for implementing ALAP and ASAP by inserting Delays on the DAGCircuit.
-# from qiskit.transpiler.passes.scheduling import ASAPSchedule, ALAPSchedule
-# dag_with_delays = ALAPSchedule(backend_properties).run(dag)
-# 3- A simple scheduled_circuit.draw() to visualize timed blocks on the qubits
-
-
-# from qiskit import assemble
-# qboj = assemble(sc, backend=backend, shots=1000)
-# print(qboj)
+from qiskit import assemble
+qboj = assemble(transpiled, backend=backend, shots=1000)
+print(qboj)
+qboj = assemble(scheduled, backend=backend, shots=1000)
+print(qboj)
 
