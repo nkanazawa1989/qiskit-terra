@@ -37,6 +37,15 @@ class Delay(Instruction):
     def c_if(self, classical, val):
         raise CircuitError('Conditional Delay is not yet implemented.')
 
+    @property
+    def duration(self):
+        return self._duration
+
+    @duration.setter
+    def duration(self, duration):
+        self.params = [duration]
+        self._duration = duration
+
 
 def delay(self, duration, *qargs, unit=None):
     """Apply delay with duration to circuit.

@@ -82,7 +82,7 @@ class Instruction:
         # empty definition means opaque or fundamental instruction
         self._definition = None
         self.params = params
-        self.duration = duration
+        self._duration = duration
 
     def __eq__(self, other):
         """Two instructions are the same if they have the same name,
@@ -204,6 +204,14 @@ class Instruction:
         # pylint: disable=cyclic-import
         from qiskit.circuit.equivalence_library import SessionEquivalenceLibrary as sel
         sel.add_equivalence(self, decomposition)
+
+    @property
+    def duration(self):
+        return self._duration
+
+    @duration.setter
+    def duration(self, duration):
+        self._duration = duration
 
     def assemble(self):
         """Assemble a QasmQobjInstruction"""
