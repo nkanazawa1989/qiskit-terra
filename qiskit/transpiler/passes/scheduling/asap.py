@@ -13,53 +13,15 @@
 # that they have been altered from the originals.
 
 """ASAP Scheduling."""
-import warnings
 from collections import defaultdict
 from typing import List
 
 from qiskit.circuit.delay import Delay
-from qiskit.circuit.measure import Measure
-from qiskit.extensions.standard import Barrier
-from qiskit.dagcircuit import DAGCircuit, DAGNode
+from qiskit.dagcircuit import DAGCircuit
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler.exceptions import TranspilerError
 
-
-class DurationMapper:
-    def __init__(self, backend):
-        # TODO: backend.properties() should let us know all about instruction durations
-        if not backend.configuration().open_pulse:
-            raise TranspilerError("DurationMapper needs backend.configuration().dt")
-        self.dt = backend.configuration().dt
-        self.backend_prop = backend.properties()
-        self.all_qubits = tuple([i for i in range(backend.configuration().num_qubits)])
-        self.inst_map = backend.defaults().instruction_schedule_map
-
-    def get(self, node: DAGNode):
-        duration = node.op.duration
-        if duration is None:
-            if isinstance(node.op, Barrier):
-                duration = 0
-            else:  # consult backend properties
-                qubits = [q.index for q in node.qargs]
-                if isinstance(node.op, Measure):
-                    duration = self.inst_map.get(node.op.name, self.all_qubits).duration
-                else:
-                    duration = self.backend_prop.gate_length(node.op.name, qubits)
-
-        # convert seconds (float) to dts (int)
-        if isinstance(duration, float):
-            org = duration
-            duration = round(duration / self.dt)
-            if isinstance(node.op, Delay):  # overwrite params! (tricky but necessary)
-                node.op.params = [duration]
-            rounding_error = abs(org - duration * self.dt)
-            if rounding_error > 1e-15:
-                warnings.warn("Duration of %s is rounded to %d dt = %e s from %e"
-                              % (node.op.name, duration, duration * self.dt, org),
-                              UserWarning)
-
-        return duration
+from .utils import DurationMapper
 
 
 class ASAPSchedule(TransformationPass):
@@ -108,9 +70,11 @@ class ASAPSchedule(TransformationPass):
             start_time = max(qubit_time_available[q] for q in node.qargs)
             pad_with_delays(node.qargs, until=start_time)
 
+            new_node = new_dag.apply_operation_back(node.op, node.qargs, node.cargs, node.condition)
             duration = self.durations.get(node)
-            node.op.duration = duration  # mutate original operation!
-            new_dag.apply_operation_back(node.op, node.qargs, node.cargs, node.condition)
+            new_node.op.duration = duration  # overwrite duration (tricky but necessary)
+            if isinstance(new_node.op, Delay):  # overwrite params! (tricky but necessary)
+                new_node.op.params = [duration]
 
             stop_time = start_time + duration
             # update time table
