@@ -79,7 +79,7 @@ dag = circuit_to_dag(transpiled)
 dag_with_delays = TimestepsASAPSchedule(backend).run(dag)
 scheduled = dag_to_circuit(dag_with_delays)
 print(scheduled.name, scheduled.data)
-print(scheduled.draw(idle_wires=True))
+print(scheduled.draw(qubits=[0, 1]))
 # print(scheduled.draw(idle_wires=False))
 
 # from qiskit import assemble

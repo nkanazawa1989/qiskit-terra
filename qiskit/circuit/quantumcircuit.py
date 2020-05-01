@@ -763,7 +763,7 @@ class QuantumCircuit:
         return scheduled
 
     def draw(self, output=None, scale=0.7, filename=None, style=None,
-             interactive=False, line_length=None, plot_barriers=True,
+             interactive=False, line_length=None, plot_barriers=True, qubits=None,
              reverse_bits=False, justify=None, vertical_compression='medium', idle_wires=True,
              with_layout=True, fold=None, ax=None, initial_state=False):
         """Draw the quantum circuit.
@@ -804,6 +804,7 @@ class QuantumCircuit:
                 ``shutil.get_terminal_size()``. However, if you're running in
                 jupyter, the default line length is set to 80 characters. If you
                 don't want pagination at all, set ``line_length=-1``.
+            qubits (list): Qubit indices to display. If not specified, all are displayed.
             reverse_bits (bool): When set to True, reverse the bit order inside
                 registers for the output visualization.
             plot_barriers (bool): Enable/disable drawing barriers in the output
@@ -972,10 +973,9 @@ class QuantumCircuit:
             return scheduled_circuit_drawer(self,
                                             filename=filename,
                                             output=output,
+                                            qubits=qubits,
                                             plot_barriers=plot_barriers,
                                             reverse_bits=reverse_bits,
-                                            justify=justify,
-                                            idle_wires=idle_wires,
                                             with_layout=with_layout,
                                             fold=fold,
                                             initial_state=initial_state)

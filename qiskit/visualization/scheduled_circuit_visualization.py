@@ -23,17 +23,16 @@ from collections import defaultdict, namedtuple
 from typing import Optional, List, Dict, Iterable
 
 from qiskit.visualization import exceptions
-from qiskit.visualization import utils
 
 logger = logging.getLogger(__name__)
+
 
 def scheduled_circuit_drawer(circuit,
                              filename=None,
                              output=None,
+                             qubits=None,
                              plot_barriers=True,
                              reverse_bits=False,
-                             justify=None,
-                             idle_wires=True,
                              with_layout=True,
                              fold=None,
                              initial_state=False,
@@ -46,8 +45,7 @@ def scheduled_circuit_drawer(circuit,
         return _text_circuit_drawer(circuit, filename=filename,
                                     reverse_bits=reverse_bits,
                                     plot_barriers=plot_barriers,
-                                    justify=justify,
-                                    idle_wires=idle_wires,
+                                    qubits=qubits,
                                     with_layout=with_layout,
                                     fold=fold,
                                     initial_state=initial_state)
@@ -66,6 +64,7 @@ from itertools import groupby
 from numpy import ndarray
 
 from qiskit.circuit import Gate, Instruction, Qubit, Clbit
+from qiskit.converters import circuit_to_dag
 from qiskit.extensions import IGate, UnitaryGate, HamiltonianGate
 from qiskit.extensions import Barrier as BarrierInstruction
 from qiskit.extensions.quantum_initializer.initializer import Initialize
@@ -74,20 +73,18 @@ from .tools.pi_check import pi_check
 from .exceptions import VisualizationError
 
 
-def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
-                         plot_barriers=True, justify=None,
-                         idle_wires=True, with_layout=True, fold=None, initial_state=True,
+def _text_circuit_drawer(circuit, filename=None, qubits=None,
+                         reverse_bits=False, plot_barriers=True,
+                         with_layout=True, fold=None, initial_state=True,
                          proportional=False):
     """Draws a circuit using ascii art.
 
     Args:
         circuit (QuantumCircuit): Input circuit
         filename (str): optional filename to write the result
+        qubits (list): Qubit indices to display. If not specified, all are displayed.
         reverse_bits (bool): Rearrange the bits in reverse order.
         plot_barriers (bool): Draws the barriers when they are there.
-        justify (str) : `left`, `right` or `none`. Defaults to `left`. Says how
-                        the circuit should be justified.
-        idle_wires (bool): Include idle wires. Default is True.
         with_layout (bool): Include layout information, with labels on the physical
             layout. Default: True
         fold (int): Optional. Breaks the circuit drawing to this length. This
@@ -99,23 +96,28 @@ def _text_circuit_drawer(circuit, filename=None, reverse_bits=False,
     Returns:
         TextDrawing: An instances that, when printed, draws the circuit in ascii art.
     """
-    qregs, cregs, layers = utils._get_layered_instructions(circuit,
-                                                           reverse_bits=reverse_bits,
-                                                           justify=justify,
-                                                           idle_wires=idle_wires)
+    dag = circuit_to_dag(circuit)
+    nodes = [node for node in dag.topological_op_nodes()]
+
+    if qubits:
+        qubits = [q for q in dag.qubits() if q.index in qubits]
+    else:
+        qubits = dag.qubits()
+
+    if reverse_bits:
+        qubits.reverse()
+
     if with_layout:
         layout = circuit._layout
     else:
         layout = None
 
-    # flatten nodes
-    nodes = [n for nodes in layers for n in nodes]
-
     if not plot_barriers:
         # exclude barriers from ops
         nodes = [n for n in nodes if not isinstance(n, BarrierInstruction)]
 
-    text_drawing = TextDrawing(qregs, cregs, nodes,
+    text_drawing = TextDrawing(nodes,
+                               qubits=qubits,
                                layout=layout,
                                initial_state=initial_state,
                                proportional=proportional)
@@ -172,11 +174,10 @@ class TextBlock:
 class TextDrawing:
     """ The text drawing"""
 
-    def __init__(self, qregs, cregs, instructions,
+    def __init__(self, instructions, qubits,
                  line_length=None, layout=None, initial_state=True,
                  proportional=False):
-        self.qubits = qregs
-        self.clbits = cregs
+        self.qubits = qubits
         self.layout = layout
         self.initial_state = initial_state
         self.line_length = line_length
