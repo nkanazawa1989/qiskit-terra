@@ -64,25 +64,30 @@ class TimestepsASAPSchedule(TransformationPass):
         for n in residual_dag.op_nodes():  # compute durations at first
             duration = self.durations.get(n)
             n.op.duration = duration  # overwrite duration (tricky but necessary)
-            if isinstance(n.op, Delay):  # overwrite params! (tricky but necessary)
-                n.op.params = [duration]
+            # if isinstance(n.op, Delay):  # overwrite params! (tricky but necessary)
+            #     n.op.params = [duration]
 
         frontier = residual_dag.leading_op_nodes()
         print([(n.op.name, [q.index for q in n.qargs[:2]]) for n in frontier])
-        max_n_iteration = dag.size()
+        max_n_iteration = dag.size() * dag.num_qubits()
         for k in range(1, max_n_iteration + 1):  # escape infinite loop
             if not frontier:
                 break
 
-            # find dominant node
-            frontier = sorted(frontier, key=lambda x: x.op.duration, reverse=True)
-            dominant = frontier[0]
+            # find most-dominant (non-delay) node (if all are delays, return least-dominant)
+            no_delays = [n for n in frontier if not isinstance(n.op, Delay)]
+            if no_delays:
+                dominant = sorted(no_delays, key=lambda x: x.op.duration, reverse=True)[0]
+            else:
+                delays = [n for n in frontier if isinstance(n.op, Delay)]
+                dominant = sorted(delays, key=lambda x: x.op.duration)[0]
+
             timestep_duration = dominant.op.duration
 
             # process nodes within dominant.op.duration complying with dependency constraint
             timelimit = {q: timestep_duration for q in residual_dag.qubits()}
             dones = []
-            news = frontier
+            news = [n for n in frontier if n.op.duration <= timestep_duration]
             while news:
                 dones.extend(news)
                 for n in news:
@@ -96,7 +101,14 @@ class TimestepsASAPSchedule(TransformationPass):
                     if n.op.duration <= timelimit[q]:
                         news.append(n)
 
-            # TODO: split deley in frontier
+            # split delays in frontier
+            for n in frontier:
+                if isinstance(n.op, Delay):
+                    assert(len(n.qargs) == 1)
+                    left_duration = timelimit[n.qargs[0]]
+                    if left_duration > 0:
+                        n.op.duration -= left_duration  # truncate the left delay
+                        # never update timelimit to add the right delay in the later step!
 
             # schedule dones
             for n in dones:
