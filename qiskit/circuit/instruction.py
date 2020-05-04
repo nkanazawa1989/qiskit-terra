@@ -231,7 +231,7 @@ class Instruction:
         # conversion will be deleted by the assembler.
         if self.condition:
             instruction._condition = self.condition
-        if self.duration and isinstance(self.duration, int):
+        if self.duration is not None and isinstance(self.duration, int):
             instruction.duration = self.duration
         return instruction
 
