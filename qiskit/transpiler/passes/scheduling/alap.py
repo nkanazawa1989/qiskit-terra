@@ -51,5 +51,5 @@ class ALAPSchedule(TransformationPass):
         new_dag = self.asap.run(new_dag)
         new_dag = new_dag.mirror()
 
-        new_dag.name = dag.name + '_alap'
+        new_dag.name = dag.name
         return new_dag

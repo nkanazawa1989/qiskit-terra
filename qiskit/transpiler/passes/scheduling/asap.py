@@ -81,10 +81,11 @@ class ASAPSchedule(TransformationPass):
             for q in node.qargs:
                 qubit_time_available[q] = stop_time
 
-        working_qubits = qubit_time_available.keys()  # FIXME: must include idle qubits?
+        working_qubits = qubit_time_available.keys()
         circuit_duration = max(qubit_time_available[q] for q in working_qubits)
-        pad_with_delays(working_qubits, until=circuit_duration)
+        pad_with_delays(working_qubits, until=circuit_duration)  # FIXME: must include idle qubits?
+        # pad_with_delays(new_dag.qubits(), until=circuit_duration)
 
-        new_dag.name = dag.name + '_asap'
+        new_dag.name = dag.name
         new_dag.duration = circuit_duration
         return new_dag
