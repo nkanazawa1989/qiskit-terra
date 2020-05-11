@@ -748,17 +748,44 @@ class QuantumCircuit:
         else:
             return string_temp
 
-    def schedule(self, backend):
+    def schedule(self, backend, basis_gates=None, coupling_map=None, method=None):
         from qiskit import transpile
         from qiskit.converters import circuit_to_dag, dag_to_circuit
         from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
-        basis_gates = backend.configuration().basis_gates + ['delay']
+        from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
+        from qiskit.transpiler.passes.scheduling.timestepsasap import TimestepsASAPSchedule
+        from qiskit.transpiler.passes.scheduling.timestepsalap import TimestepsALAPSchedule
+        available_methhods = {"asap", "alap", "timesteps_asap", "timesteps_alap"}
+
+        if basis_gates is None:
+            basis_gates = backend.configuration().basis_gates + ['delay', 'timestep']
+
+        if coupling_map is None:
+            coupling_map = backend.configuration().coupling_map
+
+        if method is None:
+            method = "alap"
+
+        if method not in available_methhods:
+            raise QiskitError("Method must be in {}".format(available_methhods))
+
         transpiled = transpile(self,
                                backend=backend,
                                optimization_level=0,
-                               basis_gates=basis_gates)
+                               basis_gates=basis_gates,
+                               coupling_map=coupling_map)
         dag = circuit_to_dag(transpiled)
-        dag_with_delays = ALAPSchedule(backend).run(dag)
+        scheduler = None
+        if method == "alap":
+            scheduler = ALAPSchedule(backend)
+        elif method == "asap":
+            scheduler = ASAPSchedule(backend)
+        elif method == "timesteps_asap":
+            scheduler = TimestepsASAPSchedule(backend)
+        elif method == "timesteps_alap":
+            scheduler = TimestepsALAPSchedule(backend)
+
+        dag_with_delays = scheduler.run(dag)
         scheduled = dag_to_circuit(dag_with_delays)
         return scheduled
 
