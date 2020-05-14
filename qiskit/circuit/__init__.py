@@ -222,6 +222,7 @@ from .gate import Gate
 from .controlledgate import ControlledGate
 from .instruction import Instruction
 from .instructionset import InstructionSet
+from .barrier import Barrier
 from .delay import Delay
 from .measure import Measure
 from .reset import Reset
