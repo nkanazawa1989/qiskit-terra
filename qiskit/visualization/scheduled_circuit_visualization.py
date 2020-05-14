@@ -69,7 +69,7 @@ from qiskit.extensions import IGate, UnitaryGate, HamiltonianGate
 from qiskit.extensions import Barrier as BarrierInstruction
 from qiskit.extensions.quantum_initializer.initializer import Initialize
 from qiskit.dagcircuit import DAGNode
-from .tools.pi_check import pi_check
+from qiskit.circuit.tools.pi_check import pi_check
 from .exceptions import VisualizationError
 
 

@@ -15,10 +15,9 @@
 """Utilities for scheduling passes."""
 import warnings
 
-from qiskit.circuit.delay import Delay
+from qiskit.circuit.barrier import Barrier
 from qiskit.circuit.measure import Measure
 from qiskit.dagcircuit import DAGNode
-from qiskit.extensions.standard import Barrier
 from qiskit.transpiler.exceptions import TranspilerError
 
 
