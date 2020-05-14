@@ -15,9 +15,8 @@
 """
 Delay instruction.
 """
-from qiskit.circuit.quantumcircuit import QuantumCircuit, QuantumRegister
-from qiskit.circuit.instruction import Instruction
 from qiskit.circuit.exceptions import CircuitError
+from qiskit.circuit.instruction import Instruction
 
 
 class Delay(Instruction):
@@ -45,58 +44,3 @@ class Delay(Instruction):
     def duration(self, duration):
         self.params = [duration]
         self._duration = duration
-
-
-def delay(self, duration, *qargs, unit=None):
-    """Apply delay with duration to circuit.
-
-    Args:
-        duration (int|float): duration. Integer type indicates duration is unitless, i.e.
-            use dt of backend. In the case of float, its `unit` must be specified.
-        qargs (QuantumRegister|list|range|slice): quantum register
-        unit (str): unit of the duration
-
-    Returns:
-        qiskit.Instruction: the attached delay instruction.
-
-    Raises:
-        CircuitError: if arguments have bad format.
-    """
-    qubits = []
-
-    if not qargs:  # None
-        for qreg in self.qregs:
-            for j in range(qreg.size):
-                qubits.append(qreg[j])
-
-    for qarg in qargs:
-        if isinstance(qarg, QuantumRegister):
-            qubits.extend([qarg[j] for j in range(qarg.size)])
-        elif isinstance(qarg, list):
-            qubits.extend(qarg)
-        elif isinstance(qarg, range):
-            qubits.extend(list(qarg))
-        elif isinstance(qarg, slice):
-            qubits.extend(self.qubits[qarg])
-        else:
-            qubits.append(qarg)
-
-    if isinstance(duration, float):
-        if not unit:
-            raise CircuitError('unit must be supplied for float duration.')
-    else:
-        if not isinstance(duration, int):
-            raise CircuitError('Invalid duration type.')
-
-    if unit:
-        if unit == 'ns':
-            duration *= 1e-9
-        elif unit == 's':
-            duration = float(duration)
-        else:
-            raise CircuitError('Unknown unit is specified.')
-
-    return self.append(Delay(len(qubits), duration), qubits)
-
-
-QuantumCircuit.delay = delay

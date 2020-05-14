@@ -784,7 +784,7 @@ class QuantumCircuit:
             method = "alap"
 
         if method not in available_methhods:
-            raise QiskitError("Method must be in {}".format(available_methhods))
+            raise CircuitError("Method must be in {}".format(available_methhods))
 
         transpiled = transpile(self,
                                backend=backend,
@@ -1634,6 +1634,58 @@ class QuantumCircuit:
                 qubits.append(qarg)
 
         return self.append(Barrier(len(qubits)), qubits, [])
+
+    def delay(self, duration, *qargs, unit=None):
+        """Apply :class:`~qiskit.circuit.Delay`. If qargs is None, applies to all.
+
+        Args:
+            duration (int|float): duration. Integer type indicates duration is unitless, i.e.
+                use dt of backend. In the case of float, its `unit` must be specified.
+            qargs (QuantumRegister|list|range|slice): quantum register
+            unit (str): unit of the duration
+
+        Returns:
+            qiskit.Instruction: the attached delay instruction.
+
+        Raises:
+            CircuitError: if arguments have bad format.
+        """
+        from .delay import Delay
+        qubits = []
+
+        if not qargs:  # None
+            for qreg in self.qregs:
+                for j in range(qreg.size):
+                    qubits.append(qreg[j])
+
+        for qarg in qargs:
+            if isinstance(qarg, QuantumRegister):
+                qubits.extend([qarg[j] for j in range(qarg.size)])
+            elif isinstance(qarg, list):
+                qubits.extend(qarg)
+            elif isinstance(qarg, range):
+                qubits.extend(list(qarg))
+            elif isinstance(qarg, slice):
+                qubits.extend(self.qubits[qarg])
+            else:
+                qubits.append(qarg)
+
+        if isinstance(duration, float):
+            if not unit:
+                raise CircuitError('unit must be supplied for float duration.')
+        else:
+            if not isinstance(duration, int):
+                raise CircuitError('Invalid duration type.')
+
+        if unit:
+            if unit == 'ns':
+                duration *= 1e-9
+            elif unit == 's':
+                duration = float(duration)
+            else:
+                raise CircuitError('Unknown unit is specified.')
+
+        return self.append(Delay(len(qubits), duration), qubits)
 
     @deprecate_arguments({'q': 'qubit'})
     def h(self, qubit, *, q=None):  # pylint: disable=invalid-name,unused-argument
