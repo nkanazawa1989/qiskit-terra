@@ -59,6 +59,7 @@ class TimestepsALAPSchedule(TransformationPass):
         tmp_dag = self.asap.run(tmp_dag)
         tmp_dag = tmp_dag.mirror()
 
+        # shift timesteps
         prev = None
         for node in tmp_dag.topological_op_nodes():
             if isinstance(node.op, Timestep):

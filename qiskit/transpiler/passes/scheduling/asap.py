@@ -73,8 +73,6 @@ class ASAPSchedule(TransformationPass):
             new_node = new_dag.apply_operation_back(node.op, node.qargs, node.cargs, node.condition)
             duration = self.durations.get(node)
             new_node.op.duration = duration  # overwrite duration (tricky but necessary)
-            # if isinstance(new_node.op, Delay):  # overwrite params! (tricky but necessary)
-            #     new_node.op.params = [duration]
 
             stop_time = start_time + duration
             # update time table
