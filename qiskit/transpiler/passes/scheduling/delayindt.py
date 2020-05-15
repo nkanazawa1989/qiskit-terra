@@ -70,5 +70,6 @@ class DelayInDt(TransformationPass):
                                   % (duration_in_dt, duration_in_dt * self.dt, duration_in_sec),
                                   UserWarning)
                 node.op.duration = duration_in_dt
+                node.op.unit = None
 
         return dag
