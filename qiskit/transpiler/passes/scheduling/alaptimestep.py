@@ -12,30 +12,30 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Timesteps ALAP Scheduling."""
+"""ALAP Timestep Scheduling."""
 
 from qiskit.circuit.timestep import Timestep
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler.exceptions import TranspilerError
 
-from .timestepsasap import TimestepsASAPSchedule
+from .asaptimestep import ASAPTimestepSchedule
 
 
-class TimestepsALAPSchedule(TransformationPass):
-    """Timesteps ALAP Scheduling."""
+class ALAPTimestepSchedule(TransformationPass):
+    """ALAP Timestep Scheduling."""
 
     def __init__(self, backend):
-        """TimestepsALAPSchedule initializer.
+        """ALAPTimestepSchedule initializer.
 
         Args:
             backend (Backend): .
         """
         super().__init__()
-        self.asap = TimestepsASAPSchedule(backend)
+        self.asap = ASAPTimestepSchedule(backend)
 
     def run(self, dag):
-        """Run the TimestepsALAPSchedule pass on `dag`.
+        """Run the ALAPTimestepSchedule pass on `dag`.
 
         Args:
             dag (DAGCircuit): DAG to schedule.
@@ -47,7 +47,7 @@ class TimestepsALAPSchedule(TransformationPass):
             TranspilerError: if ...
         """
         if len(dag.qregs) != 1 or dag.qregs.get('q', None) is None:
-            raise TranspilerError('TimestepsALAPSchedule runs on physical circuits only')
+            raise TranspilerError('ALAPTimestepSchedule runs on physical circuits only')
 
         new_dag = DAGCircuit()
         for qreg in dag.qregs.values():

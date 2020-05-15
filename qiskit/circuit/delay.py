@@ -22,9 +22,10 @@ from qiskit.circuit.instruction import Instruction
 class Delay(Instruction):
     """Do nothing and just delay/wait/idle for a specified duration."""
 
-    def __init__(self, num_qubits, duration):
+    def __init__(self, num_qubits, duration, unit=None):
         """Create new delay instruction."""
         super().__init__("delay", num_qubits, 0, params=[duration], duration=duration)
+        self.unit = unit
 
     def inverse(self):
         """Special case. Return self."""

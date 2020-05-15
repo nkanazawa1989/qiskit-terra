@@ -12,7 +12,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Timesteps ASAP Scheduling."""
+"""ASAP Timestep Scheduling."""
 import copy
 
 from qiskit.circuit.delay import Delay
@@ -24,11 +24,11 @@ from qiskit.transpiler.exceptions import TranspilerError
 from .utils import DurationMapper
 
 
-class TimestepsASAPSchedule(TransformationPass):
-    """Timesteps ASAP Scheduling."""
+class ASAPTimestepSchedule(TransformationPass):
+    """ASAP Timestep Scheduling."""
 
     def __init__(self, backend):
-        """TimestepsASAPSchedule initializer.
+        """ASAPTimestepSchedule initializer.
 
         Args:
             backend (Backend): .
@@ -37,7 +37,7 @@ class TimestepsASAPSchedule(TransformationPass):
         self.durations = DurationMapper(backend)
 
     def run(self, dag):
-        """Run the TimestepsASAPSchedule pass on `dag`.
+        """Run the ASAPTimestepSchedule pass on `dag`.
 
         Args:
             dag (DAGCircuit): DAG to schedule.
@@ -49,7 +49,7 @@ class TimestepsASAPSchedule(TransformationPass):
             TranspilerError: if ...
         """
         if len(dag.qregs) != 1 or dag.qregs.get('q', None) is None:
-            raise TranspilerError('TimestepsASAPSchedule runs on physical circuits only')
+            raise TranspilerError('ASAPTimestepSchedule runs on physical circuits only')
 
         new_dag = DAGCircuit()
         for qreg in dag.qregs.values():
@@ -64,8 +64,6 @@ class TimestepsASAPSchedule(TransformationPass):
         for n in residual_dag.op_nodes():  # compute durations at first
             duration = self.durations.get(n)
             n.op.duration = duration  # overwrite duration (tricky but necessary)
-            # if isinstance(n.op, Delay):  # overwrite params! (tricky but necessary)
-            #     n.op.params = [duration]
 
         frontier = residual_dag.leading_op_nodes()
         max_n_iteration = dag.size() * dag.num_qubits()

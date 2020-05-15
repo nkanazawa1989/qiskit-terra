@@ -27,14 +27,14 @@ from .utils import DurationMapper
 class ASAPSchedule(TransformationPass):
     """ASAP Scheduling."""
 
-    def __init__(self, backend):
+    def __init__(self, instruction_durations):
         """ASAPSchedule initializer.
 
         Args:
-            backend (Backend): .
+            instruction_durations (InstructionDurations): .
         """
         super().__init__()
-        self.durations = DurationMapper(backend)
+        self.durations = DurationMapper(instruction_durations)
 
     def run(self, dag):
         """Run the ASAPSchedule pass on `dag`.
