@@ -765,46 +765,46 @@ class QuantumCircuit:
         else:
             return string_temp
 
-    def schedule(self, backend, basis_gates=None, coupling_map=None, method=None):
-        from qiskit import transpile
-        from qiskit.converters import circuit_to_dag, dag_to_circuit
-        from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
-        from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
-        from qiskit.transpiler.passes.scheduling.timestepsasap import TimestepsASAPSchedule
-        from qiskit.transpiler.passes.scheduling.timestepsalap import TimestepsALAPSchedule
-        available_methhods = {"asap", "alap", "timesteps_asap", "timesteps_alap"}
-
-        if basis_gates is None:
-            basis_gates = backend.configuration().basis_gates + ['delay', 'timestep']
-
-        if coupling_map is None:
-            coupling_map = backend.configuration().coupling_map
-
-        if method is None:
-            method = "alap"
-
-        if method not in available_methhods:
-            raise CircuitError("Method must be in {}".format(available_methhods))
-
-        transpiled = transpile(self,
-                               backend=backend,
-                               optimization_level=0,
-                               basis_gates=basis_gates,
-                               coupling_map=coupling_map)
-        dag = circuit_to_dag(transpiled)
-        scheduler = None
-        if method == "alap":
-            scheduler = ALAPSchedule(backend)
-        elif method == "asap":
-            scheduler = ASAPSchedule(backend)
-        elif method == "timesteps_asap":
-            scheduler = TimestepsASAPSchedule(backend)
-        elif method == "timesteps_alap":
-            scheduler = TimestepsALAPSchedule(backend)
-
-        dag_with_delays = scheduler.run(dag)
-        scheduled = dag_to_circuit(dag_with_delays)
-        return scheduled
+    # def schedule(self, backend, basis_gates=None, coupling_map=None, method=None):
+    #     from qiskit import transpile
+    #     from qiskit.converters import circuit_to_dag, dag_to_circuit
+    #     from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
+    #     from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
+    #     from qiskit.transpiler.passes.scheduling.asaptimestep import ASAPTimestepSchedule
+    #     from qiskit.transpiler.passes.scheduling.alaptimestep import ALAPTimestepSchedule
+    #     available_methhods = {"asap", "alap", "timesteps_asap", "timesteps_alap"}
+    #
+    #     if basis_gates is None:
+    #         basis_gates = backend.configuration().basis_gates + ['delay', 'timestep']
+    #
+    #     if coupling_map is None:
+    #         coupling_map = backend.configuration().coupling_map
+    #
+    #     if method is None:
+    #         method = "alap"
+    #
+    #     if method not in available_methhods:
+    #         raise CircuitError("Method must be in {}".format(available_methhods))
+    #
+    #     transpiled = transpile(self,
+    #                            backend=backend,
+    #                            optimization_level=0,
+    #                            basis_gates=basis_gates,
+    #                            coupling_map=coupling_map)
+    #     dag = circuit_to_dag(transpiled)
+    #     scheduler = None
+    #     if method == "alap":
+    #         scheduler = ALAPSchedule(backend)
+    #     elif method == "asap":
+    #         scheduler = ASAPSchedule(backend)
+    #     elif method == "timesteps_asap":
+    #         scheduler = ASAPTimestepSchedule(backend)
+    #     elif method == "timesteps_alap":
+    #         scheduler = ALAPTimestepSchedule(backend)
+    #
+    #     dag_with_delays = scheduler.run(dag)
+    #     scheduled = dag_to_circuit(dag_with_delays)
+    #     return scheduled
 
     def draw(self, output=None, scale=0.7, filename=None, style=None,
              interactive=False, line_length=None, plot_barriers=True, qubits=None,
@@ -1642,7 +1642,8 @@ class QuantumCircuit:
             duration (int|float): duration. Integer type indicates duration is unitless, i.e.
                 use dt of backend. In the case of float, its `unit` must be specified.
             qargs (QuantumRegister|list|range|slice): quantum register
-            unit (str): unit of the duration
+            unit (str): unit of the duration. If ``None``, ``dt`` depending on backend is used
+                as default.
 
         Returns:
             qiskit.Instruction: the attached delay instruction.
@@ -1678,14 +1679,10 @@ class QuantumCircuit:
                 raise CircuitError('Invalid duration type.')
 
         if unit:
-            if unit == 'ns':
-                duration *= 1e-9
-            elif unit == 's':
-                duration = float(duration)
-            else:
+            if unit not in {'s', 'us', 'ns', 'ps'}:
                 raise CircuitError('Unknown unit is specified.')
 
-        return self.append(Delay(len(qubits), duration), qubits)
+        return self.append(Delay(len(qubits), duration, unit), qubits)
 
     @deprecate_arguments({'q': 'qubit'})
     def h(self, qubit, *, q=None):  # pylint: disable=invalid-name,unused-argument

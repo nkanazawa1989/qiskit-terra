@@ -597,6 +597,7 @@ class DAGCircuit:
         qc = dag_to_circuit(self)
         mirrored_qc = qc.mirror()
         mirrored_dag = circuit_to_dag(mirrored_qc)
+        mirrored_dag.duration = self.duration
         return mirrored_dag
 
     def idle_wires(self):
