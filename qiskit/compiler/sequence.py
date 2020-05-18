@@ -99,8 +99,8 @@ def _sequence(scheduled_circuit: QuantumCircuit, schedule_config: ScheduleConfig
     circ_pulse_defs = translate_gates_to_pulse_defs(scheduled_circuit, schedule_config)
     timed_schedules = [(time, cpd.schedule) for time, cpd in zip(start_times, circ_pulse_defs)
                        if not isinstance(cpd.schedule, Barrier)]
-    for time, sched in timed_schedules:
-        print(time, sched.name, sched.duration, sched.channels)
+    # for time, sched in timed_schedules:
+    #     print(time, sched.name, sched.duration, sched.channels)
     sched = Schedule(*timed_schedules, name=scheduled_circuit.name)
     assert(sched.duration == scheduled_circuit.duration)
     return pad(sched)
