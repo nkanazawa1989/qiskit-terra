@@ -23,9 +23,12 @@ from qiskit.circuit.measure import Measure
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.exceptions import QiskitError
 from qiskit.circuit.barrier import Barrier
+from qiskit.circuit.delay import Delay
 from qiskit.pulse.exceptions import PulseError
 from qiskit.pulse.schedule import Schedule
-from qiskit.pulse.channels import AcquireChannel
+from qiskit.pulse.channels import AcquireChannel, DriveChannel, MeasureChannel
+from qiskit.pulse import instructions as pulse_inst
+
 from qiskit.scheduler.utils import measure
 
 from qiskit.scheduler.config import ScheduleConfig
@@ -170,6 +173,12 @@ def translate_gates_to_pulse_defs(circuit: QuantumCircuit,
             circ_pulse_defs.append(get_measure_schedule())
         if isinstance(inst, Barrier):
             circ_pulse_defs.append(CircuitPulseDef(schedule=inst, qubits=inst_qubits))
+        elif isinstance(inst, Delay):
+            sched = Schedule(name=inst.name)
+            for q in inst_qubits:
+                sched += pulse_inst.Delay(duration=inst.duration, channel=DriveChannel(q))  # OK?
+                sched += pulse_inst.Delay(duration=inst.duration, channel=MeasureChannel(q))  # OK?
+            circ_pulse_defs.append(CircuitPulseDef(schedule=sched, qubits=inst_qubits))
         elif isinstance(inst, Measure):
             if (len(inst_qubits) != 1 and len(clbits) != 1):
                 raise QiskitError("Qubit '{0}' or classical bit '{1}' errored because the "
