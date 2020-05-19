@@ -328,6 +328,8 @@ def _transpile_circuit(circuit_config_tuple: Tuple[QuantumCircuit, Dict]) -> Qua
         from qiskit.transpiler.passes.scheduling.asaptimestep import ASAPTimestepSchedule
         from qiskit.transpiler.passes.scheduling.alaptimestep import ALAPTimestepSchedule
         from qiskit.transpiler.passes.scheduling.delayindt import DelayInDt
+        if 'delay' not in pass_manager_config.basis_gates:
+            pass_manager_config.basis_gates.append('delay')
         instruction_durations = transpile_config['instruction_durations']
         pass_manager.append(DelayInDt(dt=instruction_durations.dt))
         if scheduling_method == 'alap' or scheduling_method == 'as_late_as_possible':
