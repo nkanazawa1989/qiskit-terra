@@ -1016,6 +1016,15 @@ class QuantumCircuit:
 
         if self.duration and (output in [None, 'text']):
             from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
+            if vertical_compression != 'medium':
+                raise CircuitError("'vertical_compression' is not supported for scheduled circuit.")
+            if not idle_wires:
+                raise CircuitError("'idle_wires' is not supported for scheduled circuit. "
+                                   "Use 'qubits' to filter qubits to be displayed.")
+            if ax:
+                raise CircuitError("'ax' is not yet supported for scheduled circuit.")
+            if cregbundle:
+                raise CircuitError("'cregbundle' is not yet supported for scheduled circuit.")
             return scheduled_circuit_drawer(self,
                                             filename=filename,
                                             output=output,

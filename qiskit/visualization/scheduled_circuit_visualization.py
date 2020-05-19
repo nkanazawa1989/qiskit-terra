@@ -42,6 +42,8 @@ def scheduled_circuit_drawer(circuit,
         output = 'text'
 
     if output == 'text':
+        if isinstance(qubits, int):
+            qubits = [qubits]
         return _text_circuit_drawer(circuit, filename=filename,
                                     reverse_bits=reverse_bits,
                                     plot_barriers=plot_barriers,
@@ -99,10 +101,12 @@ def _text_circuit_drawer(circuit, filename=None, qubits=None,
     dag = circuit_to_dag(circuit)
     nodes = [node for node in dag.topological_op_nodes()]
 
-    if qubits:
+    if qubits is None:
+        qubits = dag.qubits()
+    elif isinstance(qubits, list):
         qubits = [q for q in dag.qubits() if q.index in qubits]
     else:
-        qubits = dag.qubits()
+        raise TextDrawing("Invalid qubits type: {}".format(type(qubits)))
 
     if reverse_bits:
         qubits.reverse()
