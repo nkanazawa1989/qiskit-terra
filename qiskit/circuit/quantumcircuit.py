@@ -1644,15 +1644,14 @@ class QuantumCircuit:
 
         return self.append(Barrier(len(qubits)), qubits, [])
 
-    def delay(self, duration, *qargs, unit=None):
+    def delay(self, duration, *qargs, unit='dt'):
         """Apply :class:`~qiskit.circuit.Delay`. If qargs is None, applies to all.
 
         Args:
             duration (int|float): duration. Integer type indicates duration is unitless, i.e.
                 use dt of backend. In the case of float, its `unit` must be specified.
             qargs (QuantumRegister|list|range|slice): quantum register
-            unit (str): unit of the duration. If ``None``, ``dt`` depending on backend is used
-                as default.
+            unit (str): unit of the duration. Default unit is ``dt``, which depends on backend.
 
         Returns:
             qiskit.Instruction: the attached delay instruction.
@@ -1681,15 +1680,14 @@ class QuantumCircuit:
                 qubits.append(qarg)
 
         if isinstance(duration, float):
-            if not unit:
-                raise CircuitError('unit must be supplied for float duration.')
+            if unit == 'dt':
+                raise CircuitError('duration in dt must be integer.')
         else:
             if not isinstance(duration, int):
                 raise CircuitError('Invalid duration type.')
 
-        if unit:
-            if unit not in {'s', 'us', 'ns', 'ps'}:
-                raise CircuitError('Unknown unit is specified.')
+        if unit not in {'dt', 's', 'us', 'ns', 'ps'}:
+            raise CircuitError('Unknown unit is specified.')
 
         return self.append(Delay(len(qubits), duration, unit), qubits)
 

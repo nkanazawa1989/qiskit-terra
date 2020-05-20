@@ -49,7 +49,7 @@ class DelayInDt(TransformationPass):
             raise TranspilerError('DelayInDt runs on physical circuits only')
 
         for node in dag.op_nodes(op=Delay):
-            if node.op.unit:  # update duration in dt if unit is not None (dt)
+            if node.op.unit != 'dt':  # convert unit of duration to dt
                 if self.dt is None:
                     raise TranspilerError('If using unit in delay, backend must have dt.')
                 if node.op.unit == 'ps':
@@ -61,7 +61,7 @@ class DelayInDt(TransformationPass):
                 elif node.op.unit == 's':
                     scale = 1.0
                 else:
-                    raise TranspilerError('Invalid unit %s in delay instruction.')
+                    raise TranspilerError('Invalid unit %s in delay instruction.' % node.op.unit)
                 duration_in_sec = scale * node.op.duration
                 duration_in_dt = round(duration_in_sec / self.dt)
                 rounding_error = abs(duration_in_sec - duration_in_dt * self.dt)

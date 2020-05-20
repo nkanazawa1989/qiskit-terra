@@ -384,6 +384,6 @@ class Instruction:
         return instruction
 
     def __repr__(self):
-        # TODO: elaborate
+        # TODO: improve
         return '%s(num_qubits=%s, duration=%a)' % \
                (self.__class__.__name__, self.num_qubits, self.duration)

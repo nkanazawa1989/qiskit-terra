@@ -68,7 +68,8 @@ from numpy import ndarray
 from qiskit.circuit import Gate, Instruction, Qubit, Clbit
 from qiskit.converters import circuit_to_dag
 from qiskit.extensions import IGate, UnitaryGate, HamiltonianGate
-from qiskit.extensions import Barrier as BarrierInstruction
+from qiskit.circuit import Barrier as BarrierInstruction
+from qiskit.circuit import Delay
 from qiskit.extensions.quantum_initializer.initializer import Initialize
 from qiskit.dagcircuit import DAGNode
 from qiskit.circuit.tools.pi_check import pi_check
@@ -535,12 +536,15 @@ class TextDrawing:
             label = TextDrawing.special_label(instruction.op) or instruction.name.upper()
         params = TextDrawing.params_for_label(instruction)
 
-        if params:
+        if params and not isinstance(instruction.op, Delay):
             label += "(%s)" % ','.join(params)
 
         if len(instruction.qargs) == 2:
             qubits = ",".join([str(q.index) for q in instruction.qargs])
             label += "({})".format(qubits)
+
+        # duration = str(instruction.op.duration)
+        # duration += "[{}]".format(instruction.op.unit if instruction.op.unit else "dt")
 
         label = " {}[{}] ".format(label, instruction.op.duration)
         return label
