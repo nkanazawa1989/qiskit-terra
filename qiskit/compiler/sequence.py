@@ -34,7 +34,8 @@ LOG = logging.getLogger(__name__)
 def sequence(scheduled_circuits: Union[QuantumCircuit, List[QuantumCircuit]],
              backend: Optional[BaseBackend] = None,
              inst_map: Optional[InstructionScheduleMap] = None,
-             meas_map: Optional[List[List[int]]] = None) -> Union[Schedule, List[Schedule]]:
+             meas_map: Optional[List[List[int]]] = None,
+             dt: Optional[float] = None) -> Union[Schedule, List[Schedule]]:
     """
     Schedule a scheduled circuit to a pulse ``Schedule``, using the backend.
 
@@ -45,6 +46,8 @@ def sequence(scheduled_circuits: Union[QuantumCircuit, List[QuantumCircuit]],
                   ``backend``\'s ``instruction_schedule_map``
         meas_map: List of sets of qubits that must be measured together. If ``None``, defaults to
                   the ``backend``\'s ``meas_map``
+        dt: For scheduled circuits which contain time information, dt is required. If not provided,
+            it will be obtained from the backend configuration
 
     Returns:
         A pulse ``Schedule`` that implements the input circuit
@@ -61,8 +64,12 @@ def sequence(scheduled_circuits: Union[QuantumCircuit, List[QuantumCircuit]],
         if backend is None:
             raise QiskitError("Must supply either a backend or a meas_map for scheduling passes.")
         meas_map = backend.configuration().meas_map
+    if dt is None:
+        if backend is None:
+            raise QiskitError("Must supply either a backend or the value of dt.")
+        dt = backend.configuration().dt
 
-    schedule_config = ScheduleConfig(inst_map=inst_map, meas_map=meas_map)
+    schedule_config = ScheduleConfig(inst_map=inst_map, meas_map=meas_map, dt=dt)
     circuits = scheduled_circuits if isinstance(scheduled_circuits, list) else [scheduled_circuits]
     schedules = [_sequence(circuit, schedule_config) for circuit in circuits]
     return schedules[0] if len(schedules) == 1 else schedules

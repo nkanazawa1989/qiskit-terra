@@ -166,25 +166,44 @@ def translate_gates_to_pulse_defs(circuit: QuantumCircuit,
                                qubits=[chan.index for chan in sched.channels
                                        if isinstance(chan, AcquireChannel)])
 
+    def convert_to_seconds(value: float, unit: str) -> float:
+        prefixes = {'p': 1e-12, 'n': 1e-9, 'u': 1e-6, 'µ': 1e-6,
+                    'm': 1e-3, 'k': 1e3, 'M': 1e6, 'G': 1e9, 's': 1}
+        if not unit:
+            return value
+        try:
+            return value * prefixes[unit[0]]
+        except KeyError:
+            raise QiskitError("Error parsing delay operation duration.")
+
     for inst, qubits, clbits in circuit.data:
         inst_qubits = [qubit.index for qubit in qubits]  # We want only the indices of the qubits
         if any(q in qubit_mem_slots for q in inst_qubits):
             # If we are operating on a qubit that was scheduled to be measured, process that first
             circ_pulse_defs.append(get_measure_schedule())
+
         if isinstance(inst, Barrier):
             circ_pulse_defs.append(CircuitPulseDef(schedule=inst, qubits=inst_qubits))
+
         elif isinstance(inst, Delay):
-            sched = Schedule(name=inst.name)
-            for q in inst_qubits:
-                sched += pulse_inst.Delay(duration=inst.duration, channel=DriveChannel(q))  # OK?
-                sched += pulse_inst.Delay(duration=inst.duration, channel=MeasureChannel(q))  # OK?
+            if inst.unit == 'dt':
+                duration = inst.duration
+            else:
+                duration_s = convert_to_seconds(inst.duration, inst.unit)
+                duration = int(duration_s // schedule_config.dt)
+            schedule = Schedule(name=inst.name)
+            for qubit in inst_qubits:
+                for chan in [pulse.DriveChannel, pulse.AcquireChannel, pulse.MeasureChannel]:
+                    schedule += pulse_inst.Delay(duration=duration, channel=channel(qubit))
             circ_pulse_defs.append(CircuitPulseDef(schedule=sched, qubits=inst_qubits))
+
         elif isinstance(inst, Measure):
             if (len(inst_qubits) != 1 and len(clbits) != 1):
                 raise QiskitError("Qubit '{0}' or classical bit '{1}' errored because the "
                                   "circuit Measure instruction only takes one of "
                                   "each.".format(inst_qubits, clbits))
             qubit_mem_slots[inst_qubits[0]] = clbits[0].index
+
         else:
             try:
                 circ_pulse_defs.append(
