@@ -12,8 +12,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""
-TODO: TO be filled.
+"""Lower gates to schedules. The relative timing within gates is respected. This
+module handles the translation, but does not handle timing.
 """
 from collections import namedtuple
 from typing import List
