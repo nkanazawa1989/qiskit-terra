@@ -27,8 +27,7 @@ from qiskit.compiler.schedule import schedule
 def sequence(scheduled_circuits: Union[QuantumCircuit, List[QuantumCircuit]],
              backend: Optional[BaseBackend] = None,
              inst_map: Optional[InstructionScheduleMap] = None,
-             meas_map: Optional[List[List[int]]] = None,
-             dt: Optional[float] = None) -> Union[Schedule, List[Schedule]]:
+             meas_map: Optional[List[List[int]]] = None) -> Union[Schedule, List[Schedule]]:
     """
     Schedule a scheduled circuit to a pulse ``Schedule``, using the backend.
 
@@ -45,4 +44,5 @@ def sequence(scheduled_circuits: Union[QuantumCircuit, List[QuantumCircuit]],
     Returns:
         A pulse ``Schedule`` that implements the input circuit
     """
-    return schedule(scheduled_circuits, backend, inst_map, meas_map, 'sequence')
+    return schedule(scheduled_circuits, backend=backend, inst_map=inst_map,
+                    meas_map=meas_map, method='sequence', dt=1)
