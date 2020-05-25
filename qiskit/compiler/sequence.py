@@ -38,8 +38,11 @@ def sequence(scheduled_circuits: Union[QuantumCircuit, List[QuantumCircuit]],
                   ``backend``\'s ``instruction_schedule_map``
         meas_map: List of sets of qubits that must be measured together. If ``None``, defaults to
                   the ``backend``\'s ``meas_map``
+        dt: For scheduled circuits which contain time information, dt is required. If not provided,
+            it will be obtained from the backend configuration
 
     Returns:
         A pulse ``Schedule`` that implements the input circuit
     """
-    return schedule(scheduled_circuits, backend, inst_map, meas_map, 'sequence')
+    return schedule(scheduled_circuits, backend=backend, inst_map=inst_map,
+                    meas_map=meas_map, method='sequence', dt=1)
