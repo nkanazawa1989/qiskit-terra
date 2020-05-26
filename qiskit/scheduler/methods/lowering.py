@@ -58,7 +58,6 @@ def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Lis
         QiskitError: If circuit uses a command that isn't defined in config.inst_map.
     """
     circ_pulse_defs = []
-    circ_pulse_defs = []
 
     inst_map = schedule_config.inst_map
     qubit_mem_slots = {}  # Map measured qubit index to classical bit index
@@ -90,10 +89,10 @@ def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Lis
             else:
                 duration_s = _convert_to_seconds(inst.duration, inst.unit)
                 duration = int(duration_s // schedule_config.dt)
-            schedule = Schedule(name=inst.name)
+            sched = Schedule(name=inst.name)
             for qubit in inst_qubits:
-                for chan in [pulse.DriveChannel, pulse.AcquireChannel, pulse.MeasureChannel]:
-                    schedule += pulse_inst.Delay(duration=duration, channel=channel(qubit))
+                for channel in [DriveChannel, AcquireChannel, MeasureChannel]:
+                    sched += pulse_inst.Delay(duration=duration, channel=channel(qubit))
             circ_pulse_defs.append(CircuitPulseDef(schedule=sched, qubits=inst_qubits))
 
         elif isinstance(inst, Measure):
