@@ -121,4 +121,3 @@ class QuantumCircuitData(MutableSequence):
             params = ",".join([str(p) for p in inst.params])
             res.append(f"{inst.name}({qubits})({params})[{inst.duration}]")
         return "\n".join(res)
-

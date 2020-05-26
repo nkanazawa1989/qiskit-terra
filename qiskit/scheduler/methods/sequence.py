@@ -46,9 +46,9 @@ def sequence(scheduled_circuit: QuantumCircuit, schedule_config: ScheduleConfig)
     start_times = []
     for inst, qubits, _ in scheduled_circuit.data:
         start_time = qubit_time_available[qubits[0]]
-        for q in qubits:
-            if qubit_time_available[q] != start_time:
-                raise Exception("Bug in scheduling pass.")
+        # for q in qubits:
+        #     if qubit_time_available[q] != start_time:
+        #         raise Exception("Bug in scheduling pass.")
 
         start_times.append(start_time)
         for q in qubits:
@@ -60,5 +60,5 @@ def sequence(scheduled_circuit: QuantumCircuit, schedule_config: ScheduleConfig)
     # for time, sched in timed_schedules:
     #     print(time, sched.name, sched.duration, sched.channels)
     sched = Schedule(*timed_schedules, name=scheduled_circuit.name)
-    assert(sched.duration == scheduled_circuit.duration)
+    assert sched.duration == scheduled_circuit.duration
     return pad(sched)

@@ -901,7 +901,8 @@ class QuantumCircuit:
                 A drawing that can be printed as ASCII art.
 
         Raises:
-            VisualizationError: when an invalid output method is selected
+            CircuitError: when an invalid output method is selected
+                or any invalid argument is specified.
             ImportError: when the output methods require non-installed
                 libraries
 
@@ -1014,8 +1015,8 @@ class QuantumCircuit:
             scale = output
             output = None
 
+        from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
         if self.duration and (output in [None, 'text']):
-            from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
             if vertical_compression != 'medium':
                 raise CircuitError("'vertical_compression' is not supported for scheduled circuit.")
             if not idle_wires:
@@ -1648,9 +1649,9 @@ class QuantumCircuit:
         """Apply :class:`~qiskit.circuit.Delay`. If qargs is None, applies to all.
 
         Args:
-            duration (int|float): duration. Integer type indicates duration is unitless, i.e.
+            duration (int or float): duration. Integer type indicates duration is unitless, i.e.
                 use dt of backend. In the case of float, its `unit` must be specified.
-            qargs (QuantumRegister|list|range|slice): quantum register
+            qargs (QuantumRegister or list or range or slice): quantum register
             unit (str): unit of the duration. Default unit is ``dt``, which depends on backend.
 
         Returns:
@@ -1690,6 +1691,41 @@ class QuantumCircuit:
             raise CircuitError('Unknown unit is specified.')
 
         return self.append(Delay(len(qubits), duration, unit), qubits)
+
+    def timestep(self, length, *qargs):
+        """Apply timestep to circuit.
+
+        Args:
+            length (int): length of the timestep
+            qargs (QuantumRegister or list or range or slice): quantum register
+
+        Returns:
+            qiskit.Instruction: the attached timestep instruction.
+
+        Raises:
+            CircuitError: if arguments have bad format.
+        """
+        from .timestep import Timestep
+        qubits = []
+
+        if not qargs:  # None
+            for qreg in self.qregs:
+                for j in range(qreg.size):
+                    qubits.append(qreg[j])
+
+        for qarg in qargs:
+            if isinstance(qarg, QuantumRegister):
+                qubits.extend([qarg[j] for j in range(qarg.size)])
+            elif isinstance(qarg, list):
+                qubits.extend(qarg)
+            elif isinstance(qarg, range):
+                qubits.extend(list(qarg))
+            elif isinstance(qarg, slice):
+                qubits.extend(self.qubits[qarg])
+            else:
+                qubits.append(qarg)
+
+        return self.append(Timestep(len(qubits), length), qubits)
 
     @deprecate_arguments({'q': 'qubit'})
     def h(self, qubit, *, q=None):  # pylint: disable=invalid-name,unused-argument

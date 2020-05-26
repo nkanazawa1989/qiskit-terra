@@ -19,10 +19,24 @@ Only support Ascii art mode.
 """
 
 import logging
+import sys
 from collections import defaultdict, namedtuple
+from itertools import groupby
+from shutil import get_terminal_size
 from typing import Optional, List, Dict, Iterable
 
+from numpy import ndarray
+from qiskit.circuit import Barrier as BarrierInstruction
+from qiskit.circuit import Delay
+from qiskit.circuit import Gate, Instruction, Qubit, Clbit
+from qiskit.circuit.tools.pi_check import pi_check
+from qiskit.converters import circuit_to_dag
+from qiskit.dagcircuit import DAGNode
+from qiskit.extensions import IGate, UnitaryGate, HamiltonianGate
+from qiskit.extensions.quantum_initializer.initializer import Initialize
 from qiskit.visualization import exceptions
+
+from .exceptions import VisualizationError
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +49,7 @@ def scheduled_circuit_drawer(circuit,
                              reverse_bits=False,
                              with_layout=True,
                              fold=None,
-                             initial_state=False,
-                             proportional=False):
+                             initial_state=False):
     """Minimum implementation (text mode only)"""
     if output is None:
         output = 'text'
@@ -57,29 +70,9 @@ def scheduled_circuit_drawer(circuit,
             'are latex, latex_source, text, and mpl' % output)
 
 
-# -----------------------------------------------------------------------------
-# _text_circuit_drawer
-# -----------------------------------------------------------------------------
-from shutil import get_terminal_size
-import sys
-from itertools import groupby
-from numpy import ndarray
-
-from qiskit.circuit import Gate, Instruction, Qubit, Clbit
-from qiskit.converters import circuit_to_dag
-from qiskit.extensions import IGate, UnitaryGate, HamiltonianGate
-from qiskit.circuit import Barrier as BarrierInstruction
-from qiskit.circuit import Delay
-from qiskit.extensions.quantum_initializer.initializer import Initialize
-from qiskit.dagcircuit import DAGNode
-from qiskit.circuit.tools.pi_check import pi_check
-from .exceptions import VisualizationError
-
-
 def _text_circuit_drawer(circuit, filename=None, qubits=None,
                          reverse_bits=False, plot_barriers=True,
-                         with_layout=True, fold=None, initial_state=True,
-                         proportional=False):
+                         with_layout=True, fold=None, initial_state=True):
     """Draws a circuit using ascii art.
 
     Args:
@@ -96,18 +89,22 @@ def _text_circuit_drawer(circuit, filename=None, qubits=None,
                     `shutil.get_terminal_size()`. If you don't want pagination
                    at all, set `fold=-1`.
         initial_state (bool): Optional. Adds |0> in the beginning of the line. Default: `True`.
+
     Returns:
         TextDrawing: An instances that, when printed, draws the circuit in ascii art.
+
+    Raises:
+        VisualizationError: If qubits has invalid type.
     """
     dag = circuit_to_dag(circuit)
-    nodes = [node for node in dag.topological_op_nodes()]
+    nodes = list(dag.topological_op_nodes())
 
     if qubits is None:
         qubits = dag.qubits()
     elif isinstance(qubits, list):
         qubits = [q for q in dag.qubits() if q.index in qubits]
     else:
-        raise TextDrawing("Invalid qubits type: {}".format(type(qubits)))
+        raise exceptions.VisualizationError("Invalid qubits type: {}".format(type(qubits)))
 
     if reverse_bits:
         qubits.reverse()
@@ -124,8 +121,7 @@ def _text_circuit_drawer(circuit, filename=None, qubits=None,
     text_drawing = TextDrawing(nodes,
                                qubits=qubits,
                                layout=layout,
-                               initial_state=initial_state,
-                               proportional=proportional)
+                               initial_state=initial_state)
 
     text_drawing.line_length = fold
 
@@ -138,6 +134,7 @@ TimedInstruction = namedtuple('TimedInstruction', 'op qargs start stop node')
 
 
 class TextBlock:
+    """ The text block for timelined drawer."""
     splitter = '|'
 
     def __init__(self,
@@ -163,6 +160,7 @@ class TextBlock:
 
     @classmethod
     def empty(cls, length: int, qubit: Qubit):
+        """Empty text block"""
         return TextBlock(label="",
                          length=length,
                          qubit=qubit,
@@ -180,21 +178,20 @@ class TextDrawing:
     """ The text drawing"""
 
     def __init__(self, instructions, qubits,
-                 line_length=None, layout=None, initial_state=True,
-                 proportional=False):
+                 line_length=None, layout=None, initial_state=True):
         self.qubits = qubits
         self.layout = layout
         self.initial_state = initial_state
         self.line_length = line_length
-        instructions = TextDrawing.get_timed_instructions(instructions)  # List[TimedInstruction]
-        # print(instructions)
+        instructions = TextDrawing.get_timed_instructions(instructions)
+        # print(instructions)  # List[TimedInstruction]
         zeros, positives = TextDrawing.split_instructions(instructions)
-        time_to_pos = TextDrawing.get_time_to_pos(positives)  # Dict[int, int]
-        # print(time_to_pos)
-        blocks_by_qubit = TextDrawing.get_blocks_by_qubit(instructions, time_to_pos)  # Dict[Qubit, List[TextBlock]]
-        # print(blocks_by_qubit)
-        blocks_by_qubit = TextDrawing.resolve_zero_length(blocks_by_qubit, zeros)  # Dict[Qubit, List[TextBlock]]
-        # print(blocks_by_qubit)
+        time_to_pos = TextDrawing.get_time_to_pos(positives)
+        # print(time_to_pos)  # Dict[int, int]
+        blocks_by_qubit = TextDrawing.get_blocks_by_qubit(instructions, time_to_pos)
+        # print(blocks_by_qubit)  # Dict[Qubit, List[TextBlock]]
+        blocks_by_qubit = TextDrawing.resolve_zero_length(blocks_by_qubit, zeros)
+        # print(blocks_by_qubit)  # Dict[Qubit, List[TextBlock]]
         text_by_qubit = TextDrawing.to_text(blocks_by_qubit)
         # print(text_by_qubit)
         self.no_fold = self.add_boundary(text_by_qubit)  # List[str]
@@ -261,6 +258,7 @@ class TextDrawing:
 
     @staticmethod
     def get_timed_instructions(instructions: List[DAGNode]):
+        """Build the timed instructions from the instructions and return."""
         res = []
         qubit_time_available = defaultdict(int)
         for inst in instructions:
@@ -278,13 +276,15 @@ class TextDrawing:
 
     @staticmethod
     def split_instructions(instructions: Iterable[TimedInstruction]):
+        """Split the instructions into ones with zero duration and ones with positive duration."""
         zeros = [i for i in instructions if i.op.duration == 0]
         positives = [i for i in instructions if i.op.duration > 0]
-        assert(len(zeros) + len(positives) == len(instructions))
+        assert len(zeros) + len(positives) == len(instructions)
         return zeros, positives
 
     @staticmethod
     def get_time_to_pos(instructions: List[TimedInstruction]) -> Dict[int, int]:
+        """Construct a dictionary that maps start times to positions in the timeline text"""
         time_to_pos = {0: 0}
         ordered = sorted(instructions, key=lambda x: x.stop)  # by stop time
         prev_time = 0
@@ -313,12 +313,14 @@ class TextDrawing:
         return time_to_pos
 
     @staticmethod
-    def get_min_length(inst: DAGNode):
-        return len(TextDrawing.label_for_box(inst)) + 1  # +1 for separator "|"
+    def get_min_length(instruction: DAGNode):
+        """Return the minimum text length of the instruction."""
+        return len(TextDrawing.label_for_box(instruction)) + 1  # +1 for separator "|"
 
     @staticmethod
     def get_blocks_by_qubit(instructions: List[TimedInstruction],
                             time_to_pos: Dict[int, int]) -> Dict[Qubit, List[TextBlock]]:
+        """Return a map from qubits to text blocks."""
         blocks_by_qubit = defaultdict(list)
         for i in instructions:
             for q in i.qargs:
@@ -330,10 +332,11 @@ class TextDrawing:
 
         return blocks_by_qubit
 
-
     @staticmethod
     def resolve_zero_length(blocks_by_qubit: Dict[Qubit, List[TextBlock]],
-                            zero_instructions: List[TimedInstruction]) -> Dict[Qubit, List[TextBlock]]:
+                            zero_instructions: List[TimedInstruction]
+                            ) -> Dict[Qubit, List[TextBlock]]:
+        """Insert zero duration instructions into a given text blocks."""
         news = defaultdict(list)
         blocks_by_begin = defaultdict(list)
         blocks_by_end = defaultdict(list)
@@ -346,7 +349,7 @@ class TextDrawing:
                 blocks_by_end[pos].append(b)
 
         actives = set()
-        positions = sorted([pos for pos in blocks_by_end])
+        positions = sorted(blocks_by_end)
         for pos in positions:
             actives.update(blocks_by_begin[pos])
             blocks = blocks_by_end[pos]
@@ -369,7 +372,7 @@ class TextDrawing:
                 continue
 
             # 2. zeros -> schedule layer by layer
-            zero_qubits = set([b.qubit for b in zeros])
+            zero_qubits = {b.qubit for b in zeros}
             for b in zeros:
                 b.length = TextDrawing.get_min_length(b.node)
 
@@ -380,8 +383,8 @@ class TextDrawing:
             layers = []  # layers on blocks
             wire = defaultdict(int)
             all_zero_nodes = [n.node for n in zero_instructions]
-            zero_nodes = [n for n in node_to_blocks]
-            zero_nodes.sort(key=lambda x: all_zero_nodes.index(x))
+            zero_nodes = list(node_to_blocks)
+            zero_nodes.sort(key=all_zero_nodes.index)
             for n in zero_nodes:  # must be sorted in the original order when scheduling
                 qubits = n.qargs
                 i = 1 + max(wire[q] for q in qubits)
@@ -401,7 +404,7 @@ class TextDrawing:
                         news[b.qubit].append(TextBlock.empty(length=layer_length - b.length,
                                                              qubit=b.qubit))
 
-                residuals = zero_qubits - set([b.qubit for b in layer])
+                residuals = zero_qubits - {b.qubit for b in layer}
                 for q in residuals:
                     news[q].append(TextBlock.empty(length=layer_length, qubit=q))
 
@@ -422,11 +425,13 @@ class TextDrawing:
 
     @staticmethod
     def to_text(blocks_by_qubit: Dict[Qubit, List[TextBlock]]) -> Dict[Qubit, str]:
+        """Convert text blocks into a text."""
         return {q: "".join([str(b) for b in blocks]) for q, blocks in blocks_by_qubit.items()}
 
     def add_boundary(self, text_by_qubit: Dict[Qubit, str]):
-        def all_same(es):
-            return all([e == es[0] for e in es[1:]]) if es else False
+        """Add boundary texts."""
+        def all_same(elems):
+            return all([e == elems[0] for e in elems[1:]]) if elems else False
 
         # check validity
         lengths = [len(val) for val in text_by_qubit.values()]
@@ -451,14 +456,18 @@ class TextDrawing:
         return res
 
     def wire_name(self, bit, with_initial_state=False):
-        """Returns a list of names for each wire.
+        """Returns the name of the wire corresponding to the bit.
 
         Args:
+            bit (Bit): A bit whose wire name should be returned.
             with_initial_state (bool): Optional (Default: False). If true, adds
                 the initial value to the name.
 
         Returns:
-            List: The list of wire names.
+            str: The wire name of the bit.
+
+        Raises:
+            VisualizationError: if invalid bit type is supplied.
         """
         if with_initial_state:
             initial_qubit_value = '|0>'

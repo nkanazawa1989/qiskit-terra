@@ -20,11 +20,13 @@ from qiskit.transpiler.exceptions import TranspilerError
 
 
 class InstructionDurations:
+    """Helper class to provide integer durations for safe scheduling."""
+
     def __init__(self,
                  instruction_durations: Optional[List[Tuple[str, Iterable[int], int]]] = None,
-                 dt=None):
+                 schedule_dt=None):
         self.duration_dic = {}
-        self.dt = dt
+        self.schedule_dt = schedule_dt
         if instruction_durations:
             for name, qubits, duration in instruction_durations:
                 # TODO: value check
@@ -32,12 +34,13 @@ class InstructionDurations:
 
     @classmethod
     def from_backend(cls, backend):
+        """Construct the instruction durations from the backend."""
         if backend is None:
             return InstructionDurations()
         # TODO: backend.properties() should let us know all about instruction durations
         if not backend.configuration().open_pulse:
             raise TranspilerError("DurationMapper needs backend.configuration().dt")
-        dt = backend.configuration().dt
+        dt = backend.configuration().dt  # pylint: disable=invalid-name
         instruction_durations = []
         # backend.properties._gates -> instruction_durations
         for gate, insts in backend.properties()._gates.items():
@@ -53,7 +56,7 @@ class InstructionDurations:
                     instruction_durations.append((gate, qubits, duration))
         # To know duration of measures, to be removed
         inst_map = backend.defaults().instruction_schedule_map
-        all_qubits = tuple([i for i in range(backend.configuration().num_qubits)])
+        all_qubits = tuple(range(backend.configuration().num_qubits))
         meas_duration = inst_map.get('measure', all_qubits).duration
         for q in all_qubits:
             instruction_durations.append(('measure', [q], meas_duration))
@@ -62,10 +65,11 @@ class InstructionDurations:
     def update(self,
                instruction_durations: Optional[List[Tuple[str, Iterable[int], int]]] = None,
                dt=None):
-        if self.dt and dt and self.dt != dt:
+        """Merge/extend self with instruction_durations."""
+        if self.schedule_dt and dt and self.schedule_dt != dt:
             raise TranspilerError("dt must be the same to update")
 
-        self.dt = dt or self.dt
+        self.schedule_dt = dt or self.schedule_dt
 
         if instruction_durations:
             for name, qubits, duration in instruction_durations:
@@ -74,6 +78,7 @@ class InstructionDurations:
         return self
 
     def get(self, name, qubits):
+        """Get the duration of the instruction with the name and the qubits."""
         if name in {'barrier', 'timestep'}:
             return 0
 

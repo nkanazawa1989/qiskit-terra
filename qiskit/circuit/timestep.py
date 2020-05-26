@@ -15,9 +15,8 @@
 """
 Timestep instruction.
 """
-from qiskit.circuit.quantumcircuit import QuantumCircuit, QuantumRegister
-from qiskit.circuit.instruction import Instruction
 from qiskit.circuit.exceptions import CircuitError
+from qiskit.circuit.instruction import Instruction
 
 
 class Timestep(Instruction):
@@ -36,41 +35,3 @@ class Timestep(Instruction):
 
     def c_if(self, classical, val):
         raise CircuitError('Conditional Timestep is not supported.')
-
-
-def timestep(self, length, *qargs):
-    """Apply timestep to circuit.
-
-    Args:
-        length (int): length of the timestep
-        qargs (QuantumRegister|list|range|slice): quantum register
-
-    Returns:
-        qiskit.Instruction: the attached timestep instruction.
-
-    Raises:
-        CircuitError: if arguments have bad format.
-    """
-    qubits = []
-
-    if not qargs:  # None
-        for qreg in self.qregs:
-            for j in range(qreg.size):
-                qubits.append(qreg[j])
-
-    for qarg in qargs:
-        if isinstance(qarg, QuantumRegister):
-            qubits.extend([qarg[j] for j in range(qarg.size)])
-        elif isinstance(qarg, list):
-            qubits.extend(qarg)
-        elif isinstance(qarg, range):
-            qubits.extend(list(qarg))
-        elif isinstance(qarg, slice):
-            qubits.extend(self.qubits[qarg])
-        else:
-            qubits.append(qarg)
-
-    return self.append(Timestep(len(qubits), length), qubits)
-
-
-QuantumCircuit.timestep = timestep

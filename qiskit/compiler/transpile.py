@@ -331,10 +331,10 @@ def _transpile_circuit(circuit_config_tuple: Tuple[QuantumCircuit, Dict]) -> Qua
         if 'delay' not in pass_manager_config.basis_gates:
             pass_manager_config.basis_gates.append('delay')
         instruction_durations = transpile_config['instruction_durations']
-        pass_manager.append(DelayInDt(dt=instruction_durations.dt))
-        if scheduling_method == 'alap' or scheduling_method == 'as_late_as_possible':
+        pass_manager.append(DelayInDt(dt=instruction_durations.schedule_dt))
+        if scheduling_method in {'alap', 'as_late_as_possible'}:
             pass_manager.append(ALAPSchedule(instruction_durations))
-        elif scheduling_method == 'asap' or scheduling_method == 'as_soon_as_possible':
+        elif scheduling_method in {'asap', 'as_soon_as_possible'}:
             pass_manager.append(ASAPSchedule(instruction_durations))
         elif scheduling_method == 'alap_timestep':
             pass_manager.append(ALAPTimestepSchedule(instruction_durations))

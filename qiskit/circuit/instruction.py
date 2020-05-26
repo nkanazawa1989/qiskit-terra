@@ -59,7 +59,7 @@ class Instruction:
             num_clbits (int): instruction's clbit width
             params (list[int|float|complex|str|ndarray|list|ParameterExpression]):
                 list of parameters
-            duration (int|float): instruction's duration. Its type indicates its unit:
+            duration (int or float): instruction's duration. Its type indicates its unit:
                 integer means unitless (dt of backend) and float means seconds.
 
         Raises:
@@ -208,10 +208,12 @@ class Instruction:
 
     @property
     def duration(self):
+        """Get the duration."""
         return self._duration
 
     @duration.setter
     def duration(self, duration):
+        """Set the duration."""
         self._duration = duration
 
     def assemble(self):
