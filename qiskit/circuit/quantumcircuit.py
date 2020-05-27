@@ -822,7 +822,7 @@ class QuantumCircuit:
 
         Args:
             output (str): Select the output method to use for drawing the
-                circuit. Valid choices are ``text``, ``latex``,
+                circuit. Valid choices are ``text``, ``timeline``, ``latex``,
                 ``latex_source``, or ``mpl``. By default the `'text`' drawer is
                 used unless a user config file has an alternative backend set
                 as the default. If the output kwarg is set, that backend
@@ -1016,7 +1016,9 @@ class QuantumCircuit:
             output = None
 
         from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
-        if self.duration and (output in [None, 'text']):
+        if output == 'timeline':
+            if not self.duration:
+                raise CircuitError("'timeline' drawer supports only the scheduled circuit for now.")
             if vertical_compression != 'medium':
                 raise CircuitError("'vertical_compression' is not supported for scheduled circuit.")
             if not idle_wires:
