@@ -577,6 +577,9 @@ class QuantumCircuit:
 
         self._update_parameter_table(instruction)
 
+        # mark as normal circuit if a new instruction is added
+        self.duration = None
+
         return instruction
 
     def _update_parameter_table(self, instruction):
@@ -764,47 +767,6 @@ class QuantumCircuit:
             return None
         else:
             return string_temp
-
-    # def schedule(self, backend, basis_gates=None, coupling_map=None, method=None):
-    #     from qiskit import transpile
-    #     from qiskit.converters import circuit_to_dag, dag_to_circuit
-    #     from qiskit.transpiler.passes.scheduling.alap import ALAPSchedule
-    #     from qiskit.transpiler.passes.scheduling.asap import ASAPSchedule
-    #     from qiskit.transpiler.passes.scheduling.asaptimestep import ASAPTimestepSchedule
-    #     from qiskit.transpiler.passes.scheduling.alaptimestep import ALAPTimestepSchedule
-    #     available_methhods = {"asap", "alap", "timesteps_asap", "timesteps_alap"}
-    #
-    #     if basis_gates is None:
-    #         basis_gates = backend.configuration().basis_gates + ['delay', 'timestep']
-    #
-    #     if coupling_map is None:
-    #         coupling_map = backend.configuration().coupling_map
-    #
-    #     if method is None:
-    #         method = "alap"
-    #
-    #     if method not in available_methhods:
-    #         raise CircuitError("Method must be in {}".format(available_methhods))
-    #
-    #     transpiled = transpile(self,
-    #                            backend=backend,
-    #                            optimization_level=0,
-    #                            basis_gates=basis_gates,
-    #                            coupling_map=coupling_map)
-    #     dag = circuit_to_dag(transpiled)
-    #     scheduler = None
-    #     if method == "alap":
-    #         scheduler = ALAPSchedule(backend)
-    #     elif method == "asap":
-    #         scheduler = ASAPSchedule(backend)
-    #     elif method == "timesteps_asap":
-    #         scheduler = ASAPTimestepSchedule(backend)
-    #     elif method == "timesteps_alap":
-    #         scheduler = ALAPTimestepSchedule(backend)
-    #
-    #     dag_with_delays = scheduler.run(dag)
-    #     scheduled = dag_to_circuit(dag_with_delays)
-    #     return scheduled
 
     def draw(self, output=None, scale=0.7, filename=None, style=None,
              interactive=False, line_length=None, plot_barriers=True, qubits=None,
