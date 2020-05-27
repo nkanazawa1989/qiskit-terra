@@ -28,7 +28,31 @@ backend = FakeParis()
 # provider = IBMQ.get_provider(hub='ibm-q-internal', group='deployed', project='default')
 # backend = provider.get_backend('ibmq_paris')
 
-# circuit.duration is invalidated if scheduled_circuit.data gets modified
+# enhance instruction_durations for the [('cx', None, 300), ('cx', [1, 2], 350)] case
+qc = QuantumCircuit(2)
+qc.h(0)
+qc.delay(500, 1)
+qc.cx(0,1)
+scheduled = transpile(qc,
+                      backend=backend,
+                      scheduling_method='alap',
+                      instruction_durations=[('cx', [0, 1], 1000)]
+                      )
+assert scheduled.duration == 1500
+scheduled = transpile(qc,
+                      basis_gates=['h', 'cx', 'delay'],
+                      scheduling_method='alap',
+                      instruction_durations=[('h', 0, 200), ('cx', None, 900)]
+                      )
+assert scheduled.duration == 1400
+scheduled = transpile(qc,
+                      basis_gates=['h', 'cx', 'delay'],
+                      scheduling_method='alap',
+                      instruction_durations=[('h', 0, 200), ('cx', None, 900), ('cx', [0, 1], 800)]
+                      )
+assert scheduled.duration == 1300
+
+# invalidate circuit.duration if a new instruction is appended
 qc = QuantumCircuit(2)
 qc.h(0)
 qc.delay(500, 1)
@@ -39,3 +63,4 @@ scheduled = transpile(qc,
 assert scheduled.duration == 1908
 scheduled.h(0)
 assert scheduled.duration is None
+

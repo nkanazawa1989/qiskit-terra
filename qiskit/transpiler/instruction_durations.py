@@ -23,14 +23,13 @@ class InstructionDurations:
     """Helper class to provide integer durations for safe scheduling."""
 
     def __init__(self,
-                 instruction_durations: Optional[List[Tuple[str, Iterable[int], int]]] = None,
+                 instruction_durations: Optional[List[Tuple[str, Optional[List[int]], int]]] = None,
                  schedule_dt=None):
-        self.duration_dic = {}
+        self.duration_by_name = {}
+        self.duration_by_name_qubits = {}
         self.schedule_dt = schedule_dt
         if instruction_durations:
-            for name, qubits, duration in instruction_durations:
-                # TODO: value check
-                self.duration_dic[(name, tuple(qubits))] = duration
+            self.update(instruction_durations, schedule_dt)
 
     @classmethod
     def from_backend(cls, backend):
@@ -40,6 +39,7 @@ class InstructionDurations:
         # TODO: backend.properties() should let us know all about instruction durations
         if not backend.configuration().open_pulse:
             raise TranspilerError("DurationMapper needs backend.configuration().dt")
+
         dt = backend.configuration().dt  # pylint: disable=invalid-name
         instruction_durations = []
         # backend.properties._gates -> instruction_durations
@@ -63,7 +63,7 @@ class InstructionDurations:
         return InstructionDurations(instruction_durations, dt)
 
     def update(self,
-               instruction_durations: Optional[List[Tuple[str, Iterable[int], int]]] = None,
+               instruction_durations: Optional[List[Tuple[str, Optional[List[int]], int]]] = None,
                dt=None):
         """Merge/extend self with instruction_durations."""
         if self.schedule_dt and dt and self.schedule_dt != dt:
@@ -73,7 +73,16 @@ class InstructionDurations:
 
         if instruction_durations:
             for name, qubits, duration in instruction_durations:
-                self.duration_dic[(name, tuple(qubits))] = duration
+                if not isinstance(duration, int):
+                    raise TranspilerError("duration value must be integer.")
+
+                if isinstance(qubits, int):
+                    qubits = [qubits]
+
+                if qubits is None:
+                    self.duration_by_name[name] = duration
+                else:
+                    self.duration_by_name_qubits[(name, tuple(qubits))] = duration
 
         return self
 
@@ -82,4 +91,14 @@ class InstructionDurations:
         if name in {'barrier', 'timestep'}:
             return 0
 
-        return self.duration_dic[(name, tuple(qubits))]
+        if isinstance(qubits, int):
+            qubits = [qubits]
+
+        key = (name, tuple(qubits))
+        if key in self.duration_by_name_qubits:
+            return self.duration_by_name_qubits[key]
+
+        if name in self.duration_by_name:
+            return self.duration_by_name[name]
+
+        raise TranspilerError("No value is found for key=".format(key))
