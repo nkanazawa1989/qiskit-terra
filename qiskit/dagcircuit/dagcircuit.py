@@ -729,7 +729,7 @@ class DAGCircuit:
                 # Otherwise, use the corresponding output nodes of self
                 # and compute the predecessor.
                 full_succ_map[w] = self.output_map[w]
-                full_pred_map[w] = self.predecessors(self.output_map[w])[0]
+                full_pred_map[w] = list(self.predecessors(self.output_map[w]))[0]
                 if len(list(self.predecessors(self.output_map[w]))) != 1:
                     raise DAGCircuitError("too many predecessors for %s[%d] "
                                           "output node" % (w.register, w.index))
@@ -876,7 +876,7 @@ class DAGCircuit:
                 if len(p) != 1:
                     raise DAGCircuitError("expected 1 predecessor to pass filter")
 
-                self._multi_graph.remove_edge(p[0], self.output_map[w])
+                self._multi_graph.remove_edge(p[0]._node_id, self.output_map[w]._node_id)
 
     def substitute_node(self, node, op, inplace=False):
         """Replace a DAGNode with a single instruction. qargs, cargs and

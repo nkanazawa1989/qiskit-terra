@@ -28,6 +28,33 @@ backend = FakeParis()
 # provider = IBMQ.get_provider(hub='ibm-q-internal', group='deployed', project='default')
 # backend = provider.get_backend('ibmq_paris')
 
+qc = QuantumCircuit(2, name="bell")
+qc.h(0)
+qc.cx(0,1)
+qc.measure_all()
+sc = transpile(qc, backend, scheduling_method='alap', coupling_map=[[0,1],[1,2]])
+print(sc.draw(output="timeline", qubits=[0, 1, 2]))
+sched = sequence(sc, backend)
+
+qc = QuantumCircuit(2, name="bell_with_delay")
+qc.h(0)
+qc.delay(500, 1, unit='ns')
+qc.cx(0,1)
+qc.measure_all()
+sc = transpile(qc, backend, scheduling_method='alap', coupling_map=[[0,1]])
+print(sc.draw(output="timeline", qubits=[0, 1, 2]))
+
+qc = QuantumCircuit(1, 1, name="t2_experiment")
+qc.h(0)
+qc.delay(500, 0, unit='ns')
+qc.h(0)
+qc.measure(0, 0)
+sc = transpile(qc, backend, scheduling_method='alap')
+print(sc.draw(output="timeline", qubits=[0, 1, 2]))
+sched = sequence(sc, backend)
+# for time, inst in sched.instructions:
+#     print(time, inst.name, inst.duration, inst.channels)
+
 # enhance instruction_durations for the [('cx', None, 300), ('cx', [1, 2], 350)] case
 qc = QuantumCircuit(2)
 qc.h(0)

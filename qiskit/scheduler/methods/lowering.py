@@ -91,8 +91,8 @@ def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Lis
                 duration = int(duration_s // schedule_config.dt)
             sched = Schedule(name=inst.name)
             for qubit in inst_qubits:
-                # for channel in [DriveChannel, AcquireChannel, MeasureChannel]:
-                for channel in [DriveChannel]:
+                for channel in [DriveChannel, AcquireChannel, MeasureChannel]:
+                # for channel in [DriveChannel]:
                     sched += pulse_inst.Delay(duration=duration, channel=channel(qubit))
             circ_pulse_defs.append(CircuitPulseDef(schedule=sched, qubits=inst_qubits))
 
@@ -101,7 +101,8 @@ def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Lis
                 raise QiskitError("Qubit '{0}' or classical bit '{1}' errored because the "
                                   "circuit Measure instruction only takes one of "
                                   "each.".format(inst_qubits, clbits))
-            qubit_mem_slots[inst_qubits[0]] = clbits[0].index
+            if clbits:
+                qubit_mem_slots[inst_qubits[0]] = clbits[0].index
 
         else:
             try:

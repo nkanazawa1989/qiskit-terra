@@ -15,9 +15,11 @@
 """
 TODO: TO be filled.
 """
+import warnings
 from collections import defaultdict
 
 from qiskit.circuit.barrier import Barrier
+from qiskit.circuit.measure import Measure
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.pulse.schedule import Schedule
 from qiskit.pulse.transforms import pad
@@ -28,10 +30,9 @@ from qiskit.scheduler.methods.lowering import lower_gates
 
 def sequence(scheduled_circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Schedule:
     """
-    Return the pulse Schedule which implements the input circuit using an "as soon as possible"
-    (asap) scheduling policy.
+    Return the pulse Schedule which implements the input scheduled circuit.
 
-    Circuit instructions are first each mapped to equivalent pulse
+    Assume all measurements are done at once at the last of the circuit.
     Schedules according to the command definition given by the schedule_config.
 
     Args:
@@ -44,17 +45,31 @@ def sequence(scheduled_circuit: QuantumCircuit, schedule_config: ScheduleConfig)
     # trace start times
     qubit_time_available = defaultdict(int)
     start_times = []
+    measure_times = []
     for inst, qubits, _ in scheduled_circuit.data:
         start_time = qubit_time_available[qubits[0]]
         # for q in qubits:
         #     if qubit_time_available[q] != start_time:
         #         raise Exception("Bug in scheduling pass.")
 
-        start_times.append(start_time)
+        if isinstance(inst, Measure):
+            measure_times.append(start_time)
+        else:
+            start_times.append(start_time)
         for q in qubits:
             qubit_time_available[q] += inst.duration
 
+    measure_time = measure_times[0]
+    for time in measure_times:
+        if time != measure_time:
+            # TODO: should we raise an exception?
+            warnings.warn('Not all measurements are done at once at the last.'
+                          'Resulting schedule may be incorrect.',
+                          UserWarning)
+    start_times.append(measure_time)
+
     circ_pulse_defs = lower_gates(scheduled_circuit, schedule_config)
+    assert len(start_times) == len(circ_pulse_defs)
     timed_schedules = [(time, cpd.schedule) for time, cpd in zip(start_times, circ_pulse_defs)
                        if not isinstance(cpd.schedule, Barrier)]
     # for time, sched in timed_schedules:
