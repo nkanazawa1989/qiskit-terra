@@ -92,7 +92,6 @@ def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Lis
             sched = Schedule(name=inst.name)
             for qubit in inst_qubits:
                 for channel in [DriveChannel, AcquireChannel, MeasureChannel]:
-                # for channel in [DriveChannel]:
                     sched += pulse_inst.Delay(duration=duration, channel=channel(qubit))
             circ_pulse_defs.append(CircuitPulseDef(schedule=sched, qubits=inst_qubits))
 
@@ -117,6 +116,7 @@ def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> Lis
         circ_pulse_defs.append(get_measure_schedule())
 
     return circ_pulse_defs
+
 
 def _convert_to_seconds(value: float, unit: str) -> float:
     """Convert input value to seconds by applying unit to value."""

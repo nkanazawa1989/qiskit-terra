@@ -14,7 +14,7 @@
 
 """Durations of instructions, one of transpiler configurations."""
 import warnings
-from typing import Optional, List, Tuple, Iterable
+from typing import Optional, List, Tuple
 
 from qiskit.transpiler.exceptions import TranspilerError
 
@@ -101,4 +101,4 @@ class InstructionDurations:
         if name in self.duration_by_name:
             return self.duration_by_name[name]
 
-        raise TranspilerError("No value is found for key=".format(key))
+        raise TranspilerError("No value is found for key={}".format(key))
