@@ -59,14 +59,15 @@ def sequence(scheduled_circuit: QuantumCircuit, schedule_config: ScheduleConfig)
         for q in qubits:
             qubit_time_available[q] += inst.duration
 
-    measure_time = measure_times[0]
-    for time in measure_times:
-        if time != measure_time:
-            # TODO: should we raise an exception?
-            warnings.warn('Not all measurements are done at once at the last.'
-                          'Resulting schedule may be incorrect.',
-                          UserWarning)
-    start_times.append(measure_time)
+    if measure_times:
+        measure_time = measure_times[0]
+        for time in measure_times:
+            if time != measure_time:
+                # TODO: should we raise an exception?
+                warnings.warn('Not all measurements are done at once at the last.'
+                              'Resulting schedule may be incorrect.',
+                              UserWarning)
+        start_times.append(measure_time)
 
     circ_pulse_defs = lower_gates(scheduled_circuit, schedule_config)
     assert len(start_times) == len(circ_pulse_defs)
