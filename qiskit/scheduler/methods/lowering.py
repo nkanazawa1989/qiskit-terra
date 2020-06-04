@@ -29,7 +29,7 @@ from qiskit.pulse.schedule import Schedule
 from qiskit.pulse import instructions as pulse_inst
 
 from qiskit.scheduler.config import ScheduleConfig
-from qiskit.scheduler.utils import measure
+from qiskit.pulse.macros import measure
 
 
 CircuitPulseDef = namedtuple('CircuitPulseDef', [
