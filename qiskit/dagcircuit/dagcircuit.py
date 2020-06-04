@@ -103,6 +103,8 @@ class DAGCircuit:
         self._gx = None
         self._USE_RX = None
 
+        self.duration = None
+
     # Multigraph methods where retworkx API differs syntactically from networkx.
     def _add_multi_graph_node(self, node):
         # nx: requires manual node id handling.
@@ -609,6 +611,20 @@ class DAGCircuit:
         else:
             return None
 
+    def mirror(self):
+        """Mirror the ``self`` circuit.
+
+        Returns:
+            DAGCircuit: the mirrored dag.
+        """
+        # TODO: speed up
+        from qiskit.converters import dag_to_circuit, circuit_to_dag
+        qc = dag_to_circuit(self)
+        mirrored_qc = qc.mirror()
+        mirrored_dag = circuit_to_dag(mirrored_qc)
+        mirrored_dag.duration = self.duration
+        return mirrored_dag
+
     def idle_wires(self):
         """Return idle wires.
 
@@ -738,7 +754,7 @@ class DAGCircuit:
                 # Otherwise, use the corresponding output nodes of self
                 # and compute the predecessor.
                 full_succ_map[w] = self.output_map[w]
-                full_pred_map[w] = self.predecessors(self.output_map[w])[0]
+                full_pred_map[w] = list(self.predecessors(self.output_map[w]))[0]
                 if len(list(self.predecessors(self.output_map[w]))) != 1:
                     raise DAGCircuitError("too many predecessors for %s[%d] "
                                           "output node" % (w.register, w.index))
@@ -885,7 +901,7 @@ class DAGCircuit:
                 if len(p) != 1:
                     raise DAGCircuitError("expected 1 predecessor to pass filter")
 
-                self._multi_graph.remove_edge(p[0], self.output_map[w])
+                self._multi_graph.remove_edge(p[0]._node_id, self.output_map[w]._node_id)
 
     def substitute_node(self, node, op, inplace=False):
         """Replace a DAGNode with a single instruction. qargs, cargs and
@@ -1337,6 +1353,28 @@ class DAGCircuit:
                     current_node = node
                     more_nodes = True
                     break
+
+    def leading_op_nodes(self):
+        """
+        Iterator for nodes that have no in-edges from op nodes, i.e. leading op nodes.
+
+        Returns:
+             DAGNode: the set of the leading op nodes
+        """
+        leaders = set()
+        for q in self.qubits():
+            wire = self.input_map.get(q)
+            node = next(self.successors(wire))
+            if node.type == 'out':
+                continue
+            lead = True
+            for n in self.predecessors(node):
+                if n.type == 'op':
+                    lead = False
+                    break
+            if lead:
+                leaders.add(node)
+        return leaders
 
     def count_ops(self):
         """Count the occurrences of operation names.

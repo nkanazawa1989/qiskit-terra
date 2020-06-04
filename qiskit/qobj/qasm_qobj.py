@@ -40,7 +40,7 @@ class QasmQobjInstruction:
 
     def __init__(self, name, params=None, qubits=None, register=None,
                  memory=None, condition=None, conditional=None, label=None,
-                 mask=None, relation=None, val=None, snapshot_type=None):
+                 mask=None, relation=None, val=None, snapshot_type=None, duration=None):
         """Instatiate a new QasmQobjInstruction object.
 
         Args:
@@ -72,6 +72,7 @@ class QasmQobjInstruction:
                 words, the output of the function is ``(register AND mask)``
             snapshot_type (str): For snapshot instructions the type of snapshot
                 to use
+            duration (int): (Optional) Duration [dt] of the instruction for simulator backend.
         """
         self.name = name
         if params is not None:
@@ -96,6 +97,8 @@ class QasmQobjInstruction:
             self.val = val
         if snapshot_type is not None:
             self.snapshot_type = snapshot_type
+        if duration is not None:
+            self.duration = duration
 
     def to_dict(self):
         """Return a dictionary format representation of the Instruction.
@@ -127,7 +130,7 @@ class QasmQobjInstruction:
         out = "QasmQobjInstruction(name='%s'" % self.name
         for attr in ['params', 'qubits', 'register', 'memory', '_condition',
                      'conditional', 'label', 'mask', 'relation', 'val',
-                     'snapshot_type']:
+                     'snapshot_type', 'duration']:
             attr_val = getattr(self, attr, None)
             if attr_val is not None:
                 if isinstance(attr_val, str):
@@ -141,7 +144,7 @@ class QasmQobjInstruction:
         out = "Instruction: %s\n" % self.name
         for attr in ['params', 'qubits', 'register', 'memory', '_condition',
                      'conditional', 'label', 'mask', 'relation', 'val',
-                     'snapshot_type']:
+                     'snapshot_type', 'duration']:
             if hasattr(self, attr):
                 out += '\t\t%s: %s\n' % (attr, getattr(self, attr))
         return out

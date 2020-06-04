@@ -24,3 +24,4 @@ Pulse scheduling methods.
 """
 
 from qiskit.scheduler.methods.basic import *
+from .sequence import sequence

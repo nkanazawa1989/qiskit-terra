@@ -167,6 +167,8 @@ class QuantumCircuit:
 
         self._layout = None
 
+        self.duration = None
+
     @property
     def data(self):
         """Return the circuit data (instructions and context).
@@ -596,6 +598,9 @@ class QuantumCircuit:
 
         self._update_parameter_table(instruction)
 
+        # mark as normal circuit if a new instruction is added
+        self.duration = None
+
         return instruction
 
     def _update_parameter_table(self, instruction):
@@ -785,7 +790,7 @@ class QuantumCircuit:
             return string_temp
 
     def draw(self, output=None, scale=0.7, filename=None, style=None,
-             interactive=False, line_length=None, plot_barriers=True,
+             interactive=False, line_length=None, plot_barriers=True, qubits=None,
              reverse_bits=False, justify=None, vertical_compression='medium', idle_wires=True,
              with_layout=True, fold=None, ax=None, initial_state=False, cregbundle=False):
         """Draw the quantum circuit.
@@ -800,7 +805,7 @@ class QuantumCircuit:
 
         Args:
             output (str): Select the output method to use for drawing the
-                circuit. Valid choices are ``text``, ``latex``,
+                circuit. Valid choices are ``text``, ``timeline``, ``latex``,
                 ``latex_source``, or ``mpl``. By default the `'text`' drawer is
                 used unless a user config file has an alternative backend set
                 as the default. If the output kwarg is set, that backend
@@ -826,6 +831,7 @@ class QuantumCircuit:
                 ``shutil.get_terminal_size()``. However, if you're running in
                 jupyter, the default line length is set to 80 characters. If you
                 don't want pagination at all, set ``line_length=-1``.
+            qubits (list): Qubit indices to display. If not specified, all are displayed.
             reverse_bits (bool): When set to True, reverse the bit order inside
                 registers for the output visualization.
             plot_barriers (bool): Enable/disable drawing barriers in the output
@@ -860,8 +866,6 @@ class QuantumCircuit:
             initial_state (bool): Optional. Adds ``|0>`` in the beginning of the wire.
                 Only used by the ``text``, ``latex`` and ``latex_source`` outputs.
                 Default: ``False``.
-            cregbundle (bool): Optional. If set True bundle classical registers. Not used by
-                the ``matplotlib`` output. Default: ``False``.
 
         Returns:
             :class:`PIL.Image` or :class:`matplotlib.figure` or :class:`str` or
@@ -878,7 +882,8 @@ class QuantumCircuit:
                 A drawing that can be printed as ASCII art.
 
         Raises:
-            VisualizationError: when an invalid output method is selected
+            CircuitError: when an invalid output method is selected
+                or any invalid argument is specified.
             ImportError: when the output methods require non-installed
                 libraries
 
@@ -990,6 +995,29 @@ class QuantumCircuit:
                           DeprecationWarning)
             scale = output
             output = None
+
+        from qiskit.visualization.scheduled_circuit_visualization import scheduled_circuit_drawer
+        if output == 'timeline':
+            if not self.duration:
+                raise CircuitError("'timeline' drawer supports only the scheduled circuit for now.")
+            if vertical_compression != 'medium':
+                raise CircuitError("'vertical_compression' is not supported for scheduled circuit.")
+            if not idle_wires:
+                raise CircuitError("'idle_wires' is not supported for scheduled circuit. "
+                                   "Use 'qubits' to filter qubits to be displayed.")
+            if ax:
+                raise CircuitError("'ax' is not yet supported for scheduled circuit.")
+            if cregbundle:
+                raise CircuitError("'cregbundle' is not yet supported for scheduled circuit.")
+            return scheduled_circuit_drawer(self,
+                                            filename=filename,
+                                            output=output,
+                                            qubits=qubits,
+                                            plot_barriers=plot_barriers,
+                                            reverse_bits=reverse_bits,
+                                            with_layout=with_layout,
+                                            fold=fold,
+                                            initial_state=initial_state)
 
         return circuit_drawer(self, scale=scale,
                               filename=filename, style=style,
@@ -1599,6 +1627,88 @@ class QuantumCircuit:
                 qubits.append(qarg)
 
         return self.append(Barrier(len(qubits)), qubits, [])
+
+    def delay(self, duration, *qargs, unit='dt'):
+        """Apply :class:`~qiskit.circuit.Delay`. If qargs is None, applies to all.
+
+        Args:
+            duration (int or float): duration. Integer type indicates duration is unitless, i.e.
+                use dt of backend. In the case of float, its `unit` must be specified.
+            qargs (QuantumRegister or list or range or slice): quantum register
+            unit (str): unit of the duration. Default unit is ``dt``, which depends on backend.
+
+        Returns:
+            qiskit.Instruction: the attached delay instruction.
+
+        Raises:
+            CircuitError: if arguments have bad format.
+        """
+        from .delay import Delay
+        qubits = []
+
+        if not qargs:  # None
+            for qreg in self.qregs:
+                for j in range(qreg.size):
+                    qubits.append(qreg[j])
+
+        for qarg in qargs:
+            if isinstance(qarg, QuantumRegister):
+                qubits.extend([qarg[j] for j in range(qarg.size)])
+            elif isinstance(qarg, list):
+                qubits.extend(qarg)
+            elif isinstance(qarg, range):
+                qubits.extend(list(qarg))
+            elif isinstance(qarg, slice):
+                qubits.extend(self.qubits[qarg])
+            else:
+                qubits.append(qarg)
+
+        if isinstance(duration, float):
+            if unit == 'dt':
+                raise CircuitError('duration in dt must be integer.')
+        else:
+            if not isinstance(duration, int):
+                raise CircuitError('Invalid duration type.')
+
+        if unit not in {'dt', 's', 'us', 'ns', 'ps'}:
+            raise CircuitError('Unknown unit is specified.')
+
+        return self.append(Delay(len(qubits), duration, unit), qubits)
+
+    def timestep(self, length, *qargs):
+        """Apply timestep to circuit.
+
+        Args:
+            length (int): length of the timestep
+            qargs (QuantumRegister or list or range or slice): quantum register
+
+        Returns:
+            qiskit.Instruction: the attached timestep instruction.
+
+        Raises:
+            CircuitError: if arguments have bad format.
+        """
+        from .timestep import Timestep
+        qubits = []
+
+        if not qargs:  # None
+            for qreg in self.qregs:
+                for j in range(qreg.size):
+                    qubits.append(qreg[j])
+
+        for qarg in qargs:
+            if isinstance(qarg, QuantumRegister):
+                qubits.extend([qarg[j] for j in range(qarg.size)])
+            elif isinstance(qarg, list):
+                qubits.extend(qarg)
+            elif isinstance(qarg, range):
+                qubits.extend(list(qarg))
+            elif isinstance(qarg, slice):
+                qubits.extend(self.qubits[qarg])
+            else:
+                qubits.append(qarg)
+
+        return self.append(Timestep(len(qubits), length), qubits)
 
     @deprecate_arguments({'q': 'qubit'})
     def h(self, qubit, *, q=None):  # pylint: disable=invalid-name,unused-argument
