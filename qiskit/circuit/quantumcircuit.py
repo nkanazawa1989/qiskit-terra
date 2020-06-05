@@ -1663,12 +1663,12 @@ class QuantumCircuit:
             else:
                 qubits.append(qarg)
 
-        if isinstance(duration, float):
-            if unit == 'dt':
-                raise CircuitError('duration in dt must be integer.')
-        else:
-            if not isinstance(duration, int):
-                raise CircuitError('Invalid duration type.')
+        # if isinstance(duration, float):
+        #     if unit == 'dt':
+        #         raise CircuitError('duration in dt must be integer.')
+        # else:
+        #     if not isinstance(duration, int):
+        #         raise CircuitError('Invalid duration type.')
 
         if unit not in {'dt', 's', 'us', 'ns', 'ps'}:
             raise CircuitError('Unknown unit is specified.')
