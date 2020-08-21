@@ -1,6 +1,6 @@
 # This code is part of Qiskit.
 #
-# (C) Copyright IBM 2020.
+# (C) Copyright IBM 2017, 2020.
 #
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
@@ -33,7 +33,8 @@ CircuitPulseDef = namedtuple('CircuitPulseDef', [
 
 def lower_gates(circuit: QuantumCircuit, schedule_config: ScheduleConfig) -> List[CircuitPulseDef]:
     """
-    Return a list of Schedules and the qubits they operate on, for each element encountered in th
+    Return a list of Schedules and the qubits they operate on, for each element encountered in the
+``
     input circuit.
 
     Without concern for the final schedule, extract and return a list of Schedules and the qubits
