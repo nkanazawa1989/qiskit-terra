@@ -22,17 +22,16 @@ For example::
     sched += Delay(duration, channel)  # Delay is a specific subclass of Instruction
 """
 import warnings
-
 from abc import ABC
 from collections import defaultdict
-from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
-
-import numpy as np
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from qiskit.circuit.parameterexpression import ParameterExpression, ParameterValueType
 from qiskit.pulse.channels import Channel
 from qiskit.pulse.exceptions import PulseError
-from qiskit.pulse.utils import format_parameter_value
+from qiskit.pulse.utils import format_parameter_value, instruction_duration_validation
+
+
 # pylint: disable=missing-return-doc
 
 
@@ -43,7 +42,7 @@ class Instruction(ABC):
 
     def __init__(self,
                  operands: Tuple,
-                 duration: int,
+                 duration: Union[int, ParameterExpression],
                  channels: Tuple[Channel],
                  name: Optional[str] = None):
         """Instruction initializer.
@@ -59,13 +58,6 @@ class Instruction(ABC):
             PulseError: If the input ``channels`` are not all of
                 type :class:`Channel`.
         """
-        if not isinstance(duration, (int, np.integer)):
-            raise PulseError("Instruction duration must be an integer, "
-                             "got {} instead.".format(duration))
-        if duration < 0:
-            raise PulseError("{} duration of {} is invalid: must be nonnegative."
-                             "".format(self.__class__.__name__, duration))
-
         for channel in channels:
             if not isinstance(channel, Channel):
                 raise PulseError("Expected a channel, got {} instead.".format(channel))
@@ -136,6 +128,7 @@ class Instruction(ABC):
     @property
     def duration(self) -> int:
         """Duration of this instruction."""
+        instruction_duration_validation(self._duration)
         return self._duration
 
     @property

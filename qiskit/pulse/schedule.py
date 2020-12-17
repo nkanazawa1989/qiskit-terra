@@ -892,6 +892,84 @@ class Schedule(abc.ABC):
         return 'Schedule({}, name="{}")'.format(instructions, name)
 
 
+class ScheduleBlock:
+    # TODO define abstract class that has fundamental operation
+
+    def __init__(self,
+                 transformer: Callable,
+                 name: Optional[str] = None,
+                 **alignment_options):
+
+        self._transformer = transformer
+        self._children = []
+        self._name = name
+        self._alignment_options = alignment_options
+
+    @property
+    def context_schedules(self):
+        return tuple(self._children)
+
+    def flatten(self) -> Schedule:
+        """Output schedule from schedule block with transformation."""
+        sched_out = Schedule(name=self._name)
+
+        for child in self._children:
+            if isinstance(child, ScheduleBlock):
+                child_sched = child.dump()
+            else:
+                child_sched = child
+            sched_out.append(child_sched, inplace=True)
+
+        return self._transformer(sched_out, **self._alignment_options)
+
+    def append(self, entry: Union[Instruction, Schedule, 'ScheduleBlock']):
+        """Add new schedule block or instructions to this block."""
+        if not isinstance(entry, (Instruction, Schedule, ScheduleBlock)):
+            raise PulseError('Entry should be either Instruction, Schedule, or ScheduleBlock. '
+                             '{} is invalid input.'.format(type(entry)))
+        self._children.append(entry)
+
+    @property
+    def parameters(self) -> Set:
+        """Parameters which determine the schedule behavior."""
+        return set(itertools.chain(sched.parameters for sched in self.context_schedules))
+
+    def is_parameterized(self) -> bool:
+        """Return True iff the instruction is parameterized."""
+        return any(sched.is_parameterized() for sched in self.context_schedules)
+
+    def assign_parameters(self,
+                          value_dict: Dict[ParameterExpression, ParameterValueType]
+                          ) -> 'ScheduleBlock':
+        """Assign the parameters in this schedule according to the input.
+
+        Args:
+            value_dict: A mapping from Parameters to either numeric values or another
+                Parameter expression.
+
+        Returns:
+            Schedule with updated parameters (a new one if not inplace, otherwise self).
+        """
+        # just delegate
+        for sched in self.context_schedules:
+            sched.assign_parameters(value_dict=value_dict)
+
+    def get_parameters(self,
+                       parameter_name: str) -> List[Parameter]:
+        """Get parameter object bound to this schedule by string name.
+
+        Because different ``Parameter`` objects can have the same name,
+        this method returns a list of ``Parameter`` s for the provided name.
+
+        Args:
+            parameter_name: Name of parameter.
+
+        Returns:
+            Parameter objects that have corresponding name.
+        """
+        return [param for param in self.parameters if param.name == parameter_name]
+
+
 class ParameterizedSchedule:
     """Temporary parameterized schedule class.
     This should not be returned to users as it is currently only a helper class.
