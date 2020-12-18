@@ -13,13 +13,10 @@
 """Pulses are descriptions of waveform envelopes. They can be transmitted by control electronics
 to the device.
 """
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Union
 from abc import ABC, abstractmethod
 
-import numpy as np
-
 from qiskit.circuit.parameterexpression import ParameterExpression, ParameterValueType
-from qiskit.pulse.exceptions import PulseError
 
 
 class Pulse(ABC):
@@ -28,10 +25,12 @@ class Pulse(ABC):
     """
 
     @abstractmethod
-    def __init__(self, duration: int, name: Optional[str] = None):
-        if not isinstance(duration, (int, np.integer)):
-            raise PulseError('Pulse duration should be integer.')
-        self.duration = int(duration)
+    def __init__(self,
+                 duration: Union[int, ParameterExpression],
+                 name: Optional[str] = None):
+
+        # pulse duration can be parameter. integer validation should be done at schedule level.
+        self.duration = duration
         self.name = name
 
     @property

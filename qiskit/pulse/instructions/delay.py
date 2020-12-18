@@ -45,7 +45,7 @@ class Delay(Instruction):
             channel: The channel that will have the delay.
             name: Name of the delay for display purposes.
         """
-        super().__init__((duration, channel), duration, (channel,), name=name)
+        super().__init__((duration, channel), (channel,), name=name)
 
     @property
     def channel(self) -> Channel:

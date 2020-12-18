@@ -18,7 +18,6 @@ import numpy as np
 from sympy import srepr
 
 from qiskit.circuit.parameterexpression import ParameterExpression
-from qiskit.pulse.exceptions import PulseError
 
 
 def format_meas_map(meas_map: List[List[int]]) -> Dict[int, List[int]]:
@@ -85,9 +84,10 @@ def instruction_duration_validation(duration: int):
 
     """
     if isinstance(duration, ParameterExpression):
-        raise TypeError('Instruction duration is not assigned. '
+        raise TypeError('Instruction duration {} is not assigned. '
                         'Please bind integer value before playing in the Schedule, '
-                        'or use ScheduleBlock to align instructions with unassigned duration.')
+                        'or use ScheduleBlock to align instructions with unassigned duration.'
+                        ''.format(repr(duration)))
 
     if not isinstance(duration, (int, np.integer)) or duration < 0:
         raise ValueError("Instruction duration must be a nonnegative integer, "

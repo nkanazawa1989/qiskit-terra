@@ -75,9 +75,8 @@ class Acquire(Instruction):
         self._kernel = kernel
         self._discriminator = discriminator
 
-        all_channels = [chan for chan in [channel, mem_slot, reg_slot] if chan is not None]
-        super().__init__((duration, channel, mem_slot, reg_slot),
-                         duration, all_channels, name=name)
+        all_channels = tuple([chan for chan in [channel, mem_slot, reg_slot] if chan is not None])
+        super().__init__((duration, channel, mem_slot, reg_slot), all_channels, name=name)
 
     @property
     def channel(self) -> AcquireChannel:

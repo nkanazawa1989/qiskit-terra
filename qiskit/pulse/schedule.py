@@ -522,22 +522,28 @@ class Schedule(abc.ABC):
 
         self._duration = max(self._duration, time + schedule.duration)
 
+        # TODO calling this every time is overhead
+        if isinstance(schedule, Instruction):
+            others_timeslots = {channel: [(0, schedule.duration)] for channel in schedule.channels}
+        else:
+            others_timeslots = copy.copy(schedule.timeslots)
+
         for channel in schedule.channels:
 
             if channel not in self._timeslots:
                 if time == 0:
-                    self._timeslots[channel] = copy.copy(schedule._timeslots[channel])
+                    self._timeslots[channel] = others_timeslots[channel]
                 else:
                     self._timeslots[channel] = [(i[0] + time, i[1] + time)
-                                                for i in schedule._timeslots[channel]]
+                                                for i in others_timeslots[channel]]
                 continue
 
-            for idx, interval in enumerate(schedule._timeslots[channel]):
+            for idx, interval in enumerate(others_timeslots[channel]):
                 if interval[0] + time >= self._timeslots[channel][-1][1]:
                     # Can append the remaining intervals
                     self._timeslots[channel].extend(
                         [(i[0] + time, i[1] + time)
-                         for i in schedule._timeslots[channel][idx:]])
+                         for i in others_timeslots[channel][idx:]])
                     break
 
                 try:
@@ -915,7 +921,7 @@ class ScheduleBlock:
 
         for child in self._children:
             if isinstance(child, ScheduleBlock):
-                child_sched = child.dump()
+                child_sched = child.flatten()
             else:
                 child_sched = child
             sched_out.append(child_sched, inplace=True)
@@ -932,7 +938,8 @@ class ScheduleBlock:
     @property
     def parameters(self) -> Set:
         """Parameters which determine the schedule behavior."""
-        return set(itertools.chain(sched.parameters for sched in self.context_schedules))
+        return set(itertools.chain.from_iterable(
+            sched.parameters for sched in self.context_schedules))
 
     def is_parameterized(self) -> bool:
         """Return True iff the instruction is parameterized."""
@@ -954,6 +961,8 @@ class ScheduleBlock:
         for sched in self.context_schedules:
             sched.assign_parameters(value_dict=value_dict)
 
+        return self
+
     def get_parameters(self,
                        parameter_name: str) -> List[Parameter]:
         """Get parameter object bound to this schedule by string name.
@@ -968,6 +977,14 @@ class ScheduleBlock:
             Parameter objects that have corresponding name.
         """
         return [param for param in self.parameters if param.name == parameter_name]
+
+    def __repr__(self):
+        name = format(self._name) if self._name else ""
+        instructions = ", ".join([repr(sched) for sched in self.context_schedules[:50]])
+        if len(self.context_schedules) > 25:
+            instructions += ", ..."
+        return 'ScheduleBlock({}, {}, name="{}")'.format(
+            self._transformer.__name__, instructions, name)
 
 
 class ParameterizedSchedule:

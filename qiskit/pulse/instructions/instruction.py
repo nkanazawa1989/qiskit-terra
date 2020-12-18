@@ -42,14 +42,12 @@ class Instruction(ABC):
 
     def __init__(self,
                  operands: Tuple,
-                 duration: Union[int, ParameterExpression],
                  channels: Tuple[Channel],
                  name: Optional[str] = None):
         """Instruction initializer.
 
         Args:
             operands: The argument list.
-            duration: Length of time taken by the instruction in terms of dt.
             channels: Tuple of pulse channels that this instruction operates on.
             name: Optional display name for this instruction.
 
@@ -62,9 +60,7 @@ class Instruction(ABC):
             if not isinstance(channel, Channel):
                 raise PulseError("Expected a channel, got {} instead.".format(channel))
 
-        self._duration = duration
         self._channels = channels
-        self._timeslots = {channel: [(0, self.duration)] for channel in channels}
         self._operands = operands
         self._name = name
         self._hash = None
@@ -110,12 +106,6 @@ class Instruction(ABC):
         return self._channels
 
     @property
-    def timeslots(self) -> Dict[Channel, List[Tuple[int, int]]]:
-        """Occupied time slots by this instruction."""
-        warnings.warn("Access to Instruction timeslots is deprecated.")
-        return self._timeslots
-
-    @property
     def start_time(self) -> int:
         """Relative begin time of this instruction."""
         return 0
@@ -128,8 +118,16 @@ class Instruction(ABC):
     @property
     def duration(self) -> int:
         """Duration of this instruction."""
-        instruction_duration_validation(self._duration)
-        return self._duration
+        # Class variable duration is merged into operand.
+        # When parameterized duration is assigned, this usually update only
+        # parameter object which is stored in the parameter table and
+        # class variable is not properly updated.
+        # This can be overwritten.
+
+        duration = self.operands[0]
+
+        instruction_duration_validation(duration)
+        return duration
 
     @property
     def _children(self) -> Tuple['Instruction']:

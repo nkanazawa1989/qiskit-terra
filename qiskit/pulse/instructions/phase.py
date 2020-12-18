@@ -50,7 +50,7 @@ class ShiftPhase(Instruction):
             channel: The channel this instruction operates on.
             name: Display name for this instruction.
         """
-        super().__init__((phase, channel), 0, (channel,), name=name)
+        super().__init__((0, phase, channel), (channel,), name=name)
 
     @property
     def phase(self) -> Union[complex, ParameterExpression]:
@@ -90,7 +90,7 @@ class SetPhase(Instruction):
             channel: The channel this instruction operates on.
             name: Display name for this instruction.
         """
-        super().__init__((phase, channel), 0, (channel,), name=name)
+        super().__init__((0, phase, channel), (channel,), name=name)
 
     @property
     def phase(self) -> Union[complex, ParameterExpression]:
