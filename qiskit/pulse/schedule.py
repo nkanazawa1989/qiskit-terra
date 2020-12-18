@@ -524,26 +524,26 @@ class Schedule(abc.ABC):
 
         # TODO calling this every time is overhead
         if isinstance(schedule, Instruction):
-            others_timeslots = {channel: [(0, schedule.duration)] for channel in schedule.channels}
+            other_timeslots = {channel: [(0, schedule.duration)] for channel in schedule.channels}
         else:
-            others_timeslots = copy.copy(schedule.timeslots)
+            other_timeslots = schedule._timeslots
 
         for channel in schedule.channels:
 
             if channel not in self._timeslots:
                 if time == 0:
-                    self._timeslots[channel] = others_timeslots[channel]
+                    self._timeslots[channel] = copy.copy(other_timeslots[channel])
                 else:
                     self._timeslots[channel] = [(i[0] + time, i[1] + time)
-                                                for i in others_timeslots[channel]]
+                                                for i in other_timeslots[channel]]
                 continue
 
-            for idx, interval in enumerate(others_timeslots[channel]):
+            for idx, interval in enumerate(other_timeslots[channel]):
                 if interval[0] + time >= self._timeslots[channel][-1][1]:
                     # Can append the remaining intervals
                     self._timeslots[channel].extend(
                         [(i[0] + time, i[1] + time)
-                         for i in others_timeslots[channel][idx:]])
+                         for i in other_timeslots[channel][idx:]])
                     break
 
                 try:
