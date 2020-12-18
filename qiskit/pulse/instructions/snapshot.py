@@ -41,7 +41,12 @@ class Snapshot(Instruction):
         self._channel = SnapshotChannel()
         if name is None:
             name = label
-        super().__init__((0, label, snapshot_type), (self.channel, ), name=name)
+        super().__init__((label, snapshot_type), (self.channel, ), name=name)
+
+    @property
+    def duration(self) -> int:
+        """Duration of this instruction."""
+        return 0
 
     @property
     def label(self) -> str:

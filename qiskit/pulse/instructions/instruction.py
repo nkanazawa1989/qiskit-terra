@@ -29,7 +29,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 from qiskit.circuit.parameterexpression import ParameterExpression, ParameterValueType
 from qiskit.pulse.channels import Channel
 from qiskit.pulse.exceptions import PulseError
-from qiskit.pulse.utils import format_parameter_value, instruction_duration_validation
+from qiskit.pulse.utils import format_parameter_value
 
 
 # pylint: disable=missing-return-doc
@@ -122,12 +122,9 @@ class Instruction(ABC):
         # When parameterized duration is assigned, this usually update only
         # parameter object which is stored in the parameter table and
         # class variable is not properly updated.
-        # This can be overwritten.
+        # This should be overwritten.
 
-        duration = self.operands[0]
-
-        instruction_duration_validation(duration)
-        return duration
+        raise NotImplementedError
 
     @property
     def _children(self) -> Tuple['Instruction']:

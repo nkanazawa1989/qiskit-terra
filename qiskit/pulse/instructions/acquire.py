@@ -21,6 +21,7 @@ from qiskit.pulse.channels import MemorySlot, RegisterSlot, AcquireChannel
 from qiskit.pulse.configuration import Kernel, Discriminator
 from qiskit.pulse.exceptions import PulseError
 from qiskit.pulse.instructions.instruction import Instruction
+from qiskit.pulse.utils import instruction_duration_validation
 
 
 class Acquire(Instruction):
@@ -77,6 +78,12 @@ class Acquire(Instruction):
 
         all_channels = tuple([chan for chan in [channel, mem_slot, reg_slot] if chan is not None])
         super().__init__((duration, channel, mem_slot, reg_slot), all_channels, name=name)
+
+    @property
+    def duration(self) -> int:
+        """Duration of this instruction."""
+        instruction_duration_validation(self.operands[0])
+        return self.operands[0]
 
     @property
     def channel(self) -> AcquireChannel:

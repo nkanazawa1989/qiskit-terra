@@ -65,6 +65,12 @@ class Play(Instruction):
         return self.operands[0]
 
     @property
+    def duration(self) -> int:
+        """Duration of this instruction."""
+        instruction_duration_validation(self.pulse.duration)
+        return self.pulse.duration
+
+    @property
     def channel(self) -> PulseChannel:
         """Return the :py:class:`~qiskit.pulse.channels.Channel` that this instruction is
         scheduled on.

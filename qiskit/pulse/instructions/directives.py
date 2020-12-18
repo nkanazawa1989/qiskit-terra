@@ -41,7 +41,12 @@ class RelativeBarrier(Directive):
             channels: The channel that the barrier applies to.
             name: Name of the directive for display purposes.
         """
-        super().__init__(tuple((0, *channels)), tuple(channels), name=name)
+        super().__init__(tuple(channels), tuple(channels), name=name)
+
+    @property
+    def duration(self) -> int:
+        """Duration of this instruction."""
+        return 0
 
     def __eq__(self, other):
         """Verify two barriers are equivalent."""

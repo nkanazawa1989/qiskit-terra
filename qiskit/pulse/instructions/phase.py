@@ -53,6 +53,11 @@ class ShiftPhase(Instruction):
         super().__init__((0, phase, channel), (channel,), name=name)
 
     @property
+    def duration(self) -> int:
+        """Duration of this instruction."""
+        return 0
+
+    @property
     def phase(self) -> Union[complex, ParameterExpression]:
         """Return the rotation angle enacted by this instruction in radians."""
         return self.operands[0]
@@ -91,6 +96,11 @@ class SetPhase(Instruction):
             name: Display name for this instruction.
         """
         super().__init__((0, phase, channel), (channel,), name=name)
+
+    @property
+    def duration(self) -> int:
+        """Duration of this instruction."""
+        return 0
 
     @property
     def phase(self) -> Union[complex, ParameterExpression]:
