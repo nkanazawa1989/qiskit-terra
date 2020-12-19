@@ -227,7 +227,8 @@ from qiskit.pulse import (
     transforms,
 )
 from qiskit.pulse.instructions import directives
-from qiskit.pulse.schedule import Schedule
+from qiskit.pulse.schedule import Schedule, ScheduleBlock
+from qiskit.pulse.exceptions import PulseError
 
 #: contextvars.ContextVar[BuilderContext]: active builder
 BUILDER_CONTEXTVAR = contextvars.ContextVar("backend")
@@ -271,7 +272,9 @@ class _PulseBuilder():
                  name: Optional[str] = None,
                  default_alignment: Union[str, Callable] = 'left',
                  default_transpiler_settings: Mapping = None,
-                 default_circuit_scheduler_settings: Mapping = None):
+                 default_circuit_scheduler_settings: Mapping = None,
+                 default_transform: Callable = None,
+                 evaluate_instruction_time: bool = True):
         """Initialize the builder context.
 
         .. note::
@@ -301,11 +304,11 @@ class _PulseBuilder():
         #: Union[None, ContextVar]: Token for this ``_PulseBuilder``'s ``ContextVar``.
         self._backend_ctx_token = None
 
-        #: pulse.Schedule: Active schedule of BuilderContext.
-        self._context_schedule = None
-
         #: QuantumCircuit: Lazily constructed quantum circuit
         self._lazy_circuit = None
+
+        #: pulse.Schedule: Stack of BuilderContext.
+        self._context_stack = []
 
         # ContextManager: Default alignment context.
         self._default_alignment_context = _align(default_alignment)
@@ -317,12 +320,19 @@ class _PulseBuilder():
         self._circuit_scheduler_settings = \
             default_circuit_scheduler_settings or {}
 
-        # pulse.Schedule: Root program context-schedule
-        self._schedule = schedule or Schedule(name=name)
+        # pulse.ScheduleBlock: Root program context-schedule
+        default_transform = default_transform or transforms.align_left
+        if not isinstance(schedule, ScheduleBlock):
+            self.push_context(transformer=default_transform, name=name)
+            if isinstance(schedule, Schedule):
+                self.context_schedule.append(schedule)
+        else:
+            self._context_stack.append(schedule)
 
-        self.set_context_schedule(Schedule())
+        # compiler option
+        self._evaluate_instruction_time = evaluate_instruction_time
 
-    def __enter__(self) -> Schedule:
+    def __enter__(self) -> ScheduleBlock:
         """Enter this builder context and yield either the supplied schedule
         or the schedule created for the user.
 
@@ -331,7 +341,7 @@ class _PulseBuilder():
         """
         self._backend_ctx_token = BUILDER_CONTEXTVAR.set(self)
         self._default_alignment_context.__enter__()
-        return self._schedule
+        return self.context_schedule
 
     @_compile_lazy_circuit_before
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -350,9 +360,9 @@ class _PulseBuilder():
         return self._backend
 
     @property
-    def context_schedule(self) -> Schedule:
+    def context_schedule(self) -> ScheduleBlock:
         """Return the current context schedule."""
-        return self._context_schedule
+        return self._context_stack[-1]
 
     @property
     @_requires_backend
@@ -383,19 +393,35 @@ class _PulseBuilder():
         self._circuit_scheduler_settings = settings
 
     @_compile_lazy_circuit_before
-    def compile(self) -> Schedule:
+    def compile(self) -> Union[Schedule, ScheduleBlock]:
         """Compile and output the built pulse program."""
         # Not much happens because we currently compile as we build.
         # This should be offloaded to a true compilation module
         # once we define a more sophisticated IR.
-        program = self._schedule.append(self.context_schedule, inplace=True)
-        self.set_context_schedule(Schedule())
-        return program
+        while len(self._context_stack) > 1:
+            self.pop_context()
+
+        if self._evaluate_instruction_time:
+            return self._context_stack[-1].flatten()
+        else:
+            return self._context_stack[-1]
 
     @_compile_lazy_circuit_before
-    def set_context_schedule(self, context_schedule: Schedule):
+    def push_context(self, transformer: Callable, **kwargs):
         """Set the current context's schedule for the builder."""
-        self._context_schedule = context_schedule
+        new_context = ScheduleBlock(transformer=transformer, **kwargs)
+        self._context_stack.append(new_context)
+
+    @_compile_lazy_circuit_before
+    def pop_context(self):
+        """Set the current context's schedule for the builder."""
+        if not len(self._context_stack) > 1:
+            raise PulseError('Root context or current context do not exist. '
+                             'Define context before push.')
+        current_context = self._context_stack.pop()
+
+        # Append context to parent context
+        self._context_stack[-1].append(current_context)
 
     @_compile_lazy_circuit_before
     def append_schedule(self, context_schedule: Schedule):
@@ -404,7 +430,7 @@ class _PulseBuilder():
         Args:
             context_schedule: Schedule to append to the current context schedule.
         """
-        self.context_schedule.append(context_schedule, inplace=True)
+        self.context_schedule.append(context_schedule)
 
     @_compile_lazy_circuit_before
     def append_instruction(self, instruction: instructions.Instruction):
@@ -413,7 +439,7 @@ class _PulseBuilder():
         Args:
             instruction: Instruction to append.
         """
-        self.context_schedule.append(instruction, inplace=True)
+        self.context_schedule.append(instruction)
 
     def _compile_lazy_circuit(self):
         """Call a QuantumCircuit and append the output pulse schedule
@@ -515,7 +541,8 @@ def build(backend=None,
           name: Optional[str] = None,
           default_alignment: str = 'left',
           default_transpiler_settings: Optional[Dict[str, Any]] = None,
-          default_circuit_scheduler_settings: Optional[Dict[str, Any]] = None
+          default_circuit_scheduler_settings: Optional[Dict[str, Any]] = None,
+          evaluate_instruction_time: bool = True
           ) -> ContextManager[Schedule]:
     """Create a context manager for launching the imperative pulse builder DSL.
 
@@ -565,7 +592,8 @@ def build(backend=None,
         name=name,
         default_alignment=default_alignment,
         default_transpiler_settings=default_transpiler_settings,
-        default_circuit_scheduler_settings=default_circuit_scheduler_settings)
+        default_circuit_scheduler_settings=default_circuit_scheduler_settings,
+        evaluate_instruction_time=evaluate_instruction_time)
 
 
 # Builder Utilities
@@ -795,21 +823,12 @@ def _transform_context(transform: Callable[[Schedule], Schedule],
         @contextmanager
         def wrapped_transform(*args, **kwargs):
             builder = _active_builder()
-            context_schedule = builder.context_schedule
-            transform_schedule = Schedule()
-            builder.set_context_schedule(transform_schedule)
+            builder.push_context(transformer=transform, *args, **kwargs, **transform_kwargs)
             try:
                 yield
             finally:
                 builder._compile_lazy_circuit()
-                transformed_schedule = transform(
-                    transform_schedule,
-                    *args,
-                    **kwargs,
-                    **transform_kwargs,
-                )
-                builder.set_context_schedule(context_schedule)
-                builder.append_schedule(transformed_schedule)
+                builder.pop_context()
         return wrapped_transform
 
     return wrap
